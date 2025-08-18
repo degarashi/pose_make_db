@@ -24,17 +24,13 @@ class PoseDB(Db):
     def table_def(self) -> TableDef:
         return Table_Def
 
-    def post_table_initialized(self):
-        # ランドマーク名のリストを作成
+    def post_table_initialized(self) -> None:
+        # ランドマーク名のリストを作成し、データベースに挿入する
         cur = self.cursor()
         NAMES: list[str] = [
             "nose",
-            "left_eye_inner",
-            "left_eye",
-            "left_eye_outer",
-            "right_eye_inner",
-            "right_eye",
-            "right_eye_outer",
+            "left_eye_inner", "left_eye", "left_eye_outer",
+            "right_eye_inner", "right_eye", "right_eye_outer",
             "left_ear", "right_ear",
             "mouth_left", "mouth_right",
             "left_shoulder", "right_shoulder",
@@ -47,60 +43,60 @@ class PoseDB(Db):
             "left_knee", "right_knee",
             "left_ankle", "right_ankle",
             "left_heel", "right_heel",
-            "left_foot_index", "right_foot_index"
+            "left_foot_index", "right_foot_index",
         ]
-        assert len(NAMES) == 33
+        assert len(NAMES) == 33  # ランドマーク名の数が33であることを確認
 
-        names2: list[tuple[str,...]] = []
+        names2: list[tuple[str, ...]] = []
         for n in NAMES:
             names2.append((n,))
+        # ランドマーク名をデータベースに挿入
         cur.executemany("INSERT INTO LandmarkName(name) VALUES (?)", names2)
 
     def register_imagefile(self, path: Path) -> tuple[bool, int]:
         L.debug(f"register_imagefile: {path}")
-        stat = path.stat()
+        stat = path.stat()  # ファイルの更新時刻を取得
         cur = self.cursor()
 
         # 既に登録した画像は計算を省く
-        cur.execute(
-            "SELECT size, timestamp, id FROM File WHERE path=?",
-            (str(path),)
-        )
+        cur.execute("SELECT size, timestamp, id FROM File WHERE path=?", (str(path),))
         ent = cur.fetchone()
         if ent is not None:
-            if stat.st_size == ent[0] and \
-                    stat.st_mtime == ent[1]:
-                # 前に登録したファイルであると判断 -> idを返す
+            # ファイルサイズと更新時刻が一致する場合、既に登録済みと判断
+            if stat.st_size == ent[0] and stat.st_mtime == ent[1]:
                 L.debug("already registered file(size and time)")
-                return False, ent[2]
+                return False, ent[2]  # 登録済みフラグとファイルIDを返す
 
         # ハッシュ値計算
         hash = sha512()
         with path.open("rb") as img:
             for chunk in iter(lambda: img.read(2048 * hash.block_size), b""):
                 hash.update(chunk)
-        checksum: bytes = hash.digest()
+        checksum: bytes = hash.digest()  # ファイルのハッシュ値を計算
 
         # あるいは、ファイルが移動した場合を考える
         cur.execute("SELECT id FROM File WHERE hash=?", (checksum,))
         ent = cur.fetchone()
         if ent is not None:
-            # パスの更新だけする
+            # ハッシュ値が一致する場合、ファイルが移動したと判断し、パスを更新
             cur.execute("UPDATE File SET path=? WHERE hash=?", (str(path), checksum))
             L.debug("already registered file(moved file)")
-            return False, ent[0]
+            return False, ent[0]  # 登録済みフラグとファイルIDを返す
         else:
             L.debug("generating FileId")
 
         # テーブルに格納
         cur.execute(
             "INSERT INTO File(path, size, timestamp, hash) VALUES (?,?,?,?)",
-            (str(path), stat.st_size, stat.st_mtime, checksum)
+            (str(path), stat.st_size, stat.st_mtime, checksum),
         )
-        file_id: int = cur.execute("SELECT last_insert_rowid()").fetchone()[0]
-        return True, file_id
+        file_id: int = cur.execute("SELECT last_insert_rowid()").fetchone()[
+            0
+        ]  # 新規ファイルIDを取得
+        return True, file_id  # 新規登録フラグとファイルIDを返す
 
-    def _remove_file(self, path: Path):
+    def _remove_file(self, path: Path) -> None:
+        # 指定されたパスのファイルをデータベースから削除する
         L.debug(f"removing file entry '{path}'")
 
         cur = self.cursor()
@@ -117,15 +113,19 @@ class PoseDB(Db):
         for ent in cur.fetchall():
             pose_id = ent[0]
             # ---- Landmark ----
+            # 関連するランドマークを削除
             cur.execute("DELETE FROM Landmark WHERE poseId=?", (pose_id,))
+        # 関連する姿勢推定結果を削除
         cur.execute("DELETE FROM Pose WHERE fileId=?", (file_id,))
         # ---- Pose End ----
+        # ファイル情報を削除
         cur.execute("DELETE FROM File WHERE id=?", (file_id,))
         # ---- File End ----
         L.debug("done")
 
-    def _load_image(self, estimate: Estimate, path: Path):
-        (b_id_created, image_id) = self.register_imagefile(path)
+    def _load_image(self, estimate: Estimate, path: Path) -> None:
+        # 画像を読み込み、姿勢推定を行い、結果をデータベースに保存する
+        (b_id_created, image_id) = self.register_imagefile(path) # 画像ファイルを登録
         L.debug(f"fileId={image_id}")
 
         # 新たにファイルが登録されてないなら姿勢推定の必要なし (ランドマーク座標は既に登録されている)
@@ -140,31 +140,45 @@ class PoseDB(Db):
             # PersonIdを作成
             cur = self.cursor()
             # Personはとりあえず0固定
-            cur.execute("INSERT INTO Pose(fileId, personIndex) VALUES (?,?)",
-                        (image_id, 0))
-            pose_id: int = cur.execute("SELECT last_insert_rowid()").fetchone()[0]
+            cur.execute(
+                "INSERT INTO Pose(fileId, personIndex) VALUES (?,?)", (image_id, 0)
+            )
+            pose_id: int = cur.execute("SELECT last_insert_rowid()").fetchone()[
+                0
+            ]  # 新規姿勢推定IDを取得
             L.debug(f"poseId={pose_id}")
 
-            # テーブルに格納
-            lms = []
-            index = 0
+            # ランドマーク情報をテーブルに格納
+            # (poseId, landmarkIndex, presence, visibility, x, y, z)
+            lms: list[tuple[int, int, float, float, float, float, float]] = []
+            mark_index: int = 0
             for m in marks:
                 pos = m.pos
                 # Y軸は反転
-                lms.append((pose_id, index, m.presence, m.visibility, pos[0], -pos[1], pos[2]))
-                index += 1
+                lms.append(
+                    (
+                        pose_id,
+                        mark_index,
+                        m.presence,
+                        m.visibility,
+                        pos[0], -pos[1], pos[2],
+                    )
+                )
+                mark_index += 1
             cur.executemany("INSERT INTO Landmark VALUES (?,?,?,?,?,?,?)", lms)
 
             L.debug("Success")
         except EstimateFailed:
             L.debug("Failed")
-            raise
+            raise # 姿勢推定失敗時は例外を再送出
 
-    def load_images(self, path_list: list[Path]):
+    def load_images(self, path_list: list[Path]) -> None:
+        # 画像ファイルのリストを処理し、姿勢推定結果をデータベースにロードする
         with Estimate(self._model_path) as estimate:
             # tqdmを使用して進捗バーを表示
             for path in tqdm(path_list, desc="Processing images"):
                 try:
+                    # 各画像を処理
                     self._load_image(estimate, path)
                 except EstimateFailed:
                     # 次回更新時に無駄な探査をしないようFileエントリだけのこしておく
