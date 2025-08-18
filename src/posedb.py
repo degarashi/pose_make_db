@@ -2,6 +2,8 @@ import logging as L
 from hashlib import sha512
 from pathlib import Path
 
+from tqdm import tqdm
+
 from common.db import Db, TableDef
 from common.posedb_desc import Table_Def, init_table_query
 from pose_estimate import Estimate, EstimateFailed, Landmark
@@ -160,7 +162,8 @@ class PoseDB(Db):
 
     def load_images(self, path_list: list[Path]):
         with Estimate(self._model_path) as estimate:
-            for path in path_list:
+            # tqdmを使用して進捗バーを表示
+            for path in tqdm(path_list, desc="Processing images"):
                 try:
                     self._load_image(estimate, path)
                 except EstimateFailed:
