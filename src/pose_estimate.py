@@ -1,6 +1,9 @@
-import mediapipe as mp
 from dataclasses import dataclass
-from typing import List, Tuple, Any
+from typing import Any, List, Tuple
+
+import mediapipe as mp
+
+from common.constants import BLAZEPOSE_LANDMARK_LEN
 
 
 @dataclass
@@ -74,7 +77,8 @@ class Estimate:
             推定されたランドマーク(Landmark)のリスト
 
         Raises:
-            EstimateFailed: 姿勢推定が失敗した場合(例: ランドマークが33個未満しか検出されなかった場合)
+            EstimateFailed: 姿勢推定が失敗した場合
+            (例: ランドマークがBLAZEPOSE_LANDMARK_LEN個未満しか検出されなかった場合)
         """
         # 画像ファイルの読み込み
         mp_image = mp.Image.create_from_file(img_path)
@@ -97,8 +101,8 @@ class Estimate:
                 )
             break  # 最初のポーズのみを処理するため、ループを抜ける
 
-        # mediapipeのランドマークポイントは33個
+        # mediapipeのランドマークポイント個数のチェック
         # 検出された数がそれに満たない場合はエラーとする
-        if len(marksList) < 33:
+        if len(marksList) < BLAZEPOSE_LANDMARK_LEN:
             raise EstimateFailed()
         return marksList

@@ -2,6 +2,7 @@ import logging as L
 from hashlib import sha512
 from pathlib import Path
 
+from common.constants import BLAZEPOSE_LANDMARK_LEN
 from common.db import Db, TableDef
 from common.posedb_desc import Table_Def, init_table_query
 from pose_estimate import Landmark
@@ -42,7 +43,7 @@ class PoseDB(Db):
             "left_heel", "right_heel",
             "left_foot_index", "right_foot_index",
         ]
-        assert len(NAMES) == 33  # ランドマーク名の数が33であることを確認
+        assert len(NAMES) == BLAZEPOSE_LANDMARK_LEN  # ランドマーク名の数が一致することを確認
 
         names2: list[tuple[str, ...]] = []
         for n in NAMES:
