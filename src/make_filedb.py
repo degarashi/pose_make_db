@@ -7,15 +7,13 @@ from pathlib import Path
 
 from tqdm import tqdm
 
-from common import log
+from common import log, default_path
 from common.argparse_aux import str_to_bool
 from pose_estimate import Estimate, EstimateFailed, Landmark
 from posedb import PoseDB
 
-TEST_DATA_PATH = Path("test_data")
-DEFAULT_DB_PATH = TEST_DATA_PATH / "pose_db.sqlite3"
 # MediaPipe Pose Landmarkerのモデルファイルパス
-DEFAULT_MODEL_PATH = TEST_DATA_PATH / "pose_landmarker_heavy.task"
+DEFAULT_MODEL_PATH = default_path.TEST_DATA_PATH / "pose_landmarker_heavy.task"
 
 
 # 姿勢推定
@@ -35,7 +33,7 @@ if __name__ == "__main__":
         parser.add_argument(
             "--database_path",
             type=Path,
-            default=DEFAULT_DB_PATH,
+            default=default_path.DEFAULT_DB_PATH,
             help="SQLite3 database file",
         )
         # データベースを初期化するか
