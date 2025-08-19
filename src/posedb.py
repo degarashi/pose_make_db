@@ -2,19 +2,16 @@ import logging as L
 from hashlib import sha512
 from pathlib import Path
 
-from tqdm import tqdm
-
 from common.db import Db, TableDef
 from common.posedb_desc import Table_Def, init_table_query
-from pose_estimate import Estimate, EstimateFailed, Landmark
+from pose_estimate import Landmark
 
 
 class PoseDB(Db):
-    _model_path: str
-
-    def __init__(self, dbpath: str, clear_table: bool, model_path: str, row_name: bool = False):
+    def __init__(
+        self, dbpath: str, clear_table: bool, row_name: bool = False
+    ):
         super().__init__(dbpath, clear_table, row_name)
-        self._model_path = model_path
 
     @property
     def init_query(self) -> str:
@@ -123,63 +120,35 @@ class PoseDB(Db):
         # ---- File End ----
         L.debug("done")
 
-    def _load_image(self, estimate: Estimate, path: Path) -> None:
-        # 画像を読み込み、姿勢推定を行い、結果をデータベースに保存する
-        (b_id_created, image_id) = self.register_imagefile(path) # 画像ファイルを登録
-        L.debug(f"fileId={image_id}")
+    def write_landmarks(self, image_id: int, marks: list[Landmark]) -> None:
+        # PersonIdを作成
+        cur = self.cursor()
+        # Personはとりあえず0固定
+        cur.execute(
+            "INSERT INTO Pose(fileId, personIndex) VALUES (?,?)", (image_id, 0)
+        )
+        pose_id: int = cur.execute("SELECT last_insert_rowid()").fetchone()[
+            0
+        ]  # 新規姿勢推定IDを取得
+        L.debug(f"poseId={pose_id}")
 
-        # 新たにファイルが登録されてないなら姿勢推定の必要なし (ランドマーク座標は既に登録されている)
-        if not b_id_created:
-            return
-
-        L.debug("Estimating pose...")
-        try:
-            # 姿勢推定
-            marks: list[Landmark] = estimate.estimate(str(path))
-
-            # PersonIdを作成
-            cur = self.cursor()
-            # Personはとりあえず0固定
-            cur.execute(
-                "INSERT INTO Pose(fileId, personIndex) VALUES (?,?)", (image_id, 0)
-            )
-            pose_id: int = cur.execute("SELECT last_insert_rowid()").fetchone()[
-                0
-            ]  # 新規姿勢推定IDを取得
-            L.debug(f"poseId={pose_id}")
-
-            # ランドマーク情報をテーブルに格納
-            # (poseId, landmarkIndex, presence, visibility, x, y, z)
-            lms: list[tuple[int, int, float, float, float, float, float]] = []
-            mark_index: int = 0
-            for m in marks:
-                pos = m.pos
-                # Y軸は反転
-                lms.append(
-                    (
-                        pose_id,
-                        mark_index,
-                        m.presence,
-                        m.visibility,
-                        pos[0], -pos[1], pos[2],
-                    )
+        # ランドマーク情報をテーブルに格納
+        # (poseId, landmarkIndex, presence, visibility, x, y, z)
+        lms: list[tuple[int, int, float, float, float, float, float]] = []
+        mark_index: int = 0
+        for m in marks:
+            pos = m.pos
+            # Y軸は反転
+            lms.append(
+                (
+                    pose_id,
+                    mark_index,
+                    m.presence,
+                    m.visibility,
+                    pos[0], -pos[1], pos[2],
                 )
-                mark_index += 1
-            cur.executemany("INSERT INTO Landmark VALUES (?,?,?,?,?,?,?)", lms)
+            )
+            mark_index += 1
+        cur.executemany("INSERT INTO Landmark VALUES (?,?,?,?,?,?,?)", lms)
 
-            L.debug("Success")
-        except EstimateFailed:
-            L.debug("Failed")
-            raise # 姿勢推定失敗時は例外を再送出
-
-    def load_images(self, path_list: list[Path]) -> None:
-        # 画像ファイルのリストを処理し、姿勢推定結果をデータベースにロードする
-        with Estimate(self._model_path) as estimate:
-            # tqdmを使用して進捗バーを表示
-            for path in tqdm(path_list, desc="Processing images"):
-                try:
-                    # 各画像を処理
-                    self._load_image(estimate, path)
-                except EstimateFailed:
-                    # 次回更新時に無駄な探査をしないようFileエントリだけのこしておく
-                    pass
+        L.debug("Success")
