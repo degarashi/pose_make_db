@@ -3,8 +3,9 @@ from hashlib import sha512
 from pathlib import Path
 
 from common.constants import BLAZEPOSE_LANDMARK_LEN
-from common.db import Db, TableDef
+from common.db import Db
 from common.posedb_desc import Table_Def, init_table_query
+from common.types import TableDef
 from pose_estimate import Landmark
 
 

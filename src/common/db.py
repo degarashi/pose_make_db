@@ -1,12 +1,12 @@
 import sqlite3
 from pathlib import Path
-from typing import Any, Optional, TypeAlias
+from typing import Any, Optional
 
 from common import sql
 from common.table_check import check_validity
 from common.table_check_exception import VCFTableNotFound
 
-TableDef: TypeAlias = dict[str, dict[str, type] | None]
+from .types import TableDef
 
 
 class Db:
