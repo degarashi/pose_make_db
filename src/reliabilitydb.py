@@ -1,5 +1,6 @@
 from common.db import Db
 from common.reliability_desc import Table_Def, init_table_query
+from common.types import TableDef
 
 
 class ReliabilityDB(Db):
@@ -16,7 +17,7 @@ class ReliabilityDB(Db):
         return init_table_query()
 
     @property
-    def table_def(self) -> dict[str, dict[str, type]]:
+    def table_def(self) -> TableDef:
         # テーブル定義を返す
         return Table_Def
 

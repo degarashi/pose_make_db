@@ -9,12 +9,13 @@ from common.table_check_exception import (
     VCFInvalidRow,
     VCFTableNotFound,
 )
+from common.types import TableDef
 
 
 # テーブルが存在するか、カラムの型が合っているかのチェック
 def check_validity(
         conn: sqlite3.Connection,
-        table_def: dict[str, dict[str, type] | None]
+        table_def: TableDef
 ):
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()

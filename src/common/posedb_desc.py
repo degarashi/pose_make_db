@@ -2,6 +2,8 @@
     BlazePoseの解析結果を格納しておくデータベース概要
 """
 
+from .types import TableDef
+
 # 座標は右手座標系
 # X 右方向+
 # Y 上方向-
@@ -54,7 +56,7 @@ def init_table_query() -> str:
     """
 
 
-Table_Def: dict[str, dict[str, type] | None] = {
+Table_Def: TableDef = {
     "File": {
         "id": int,
         "path": str,

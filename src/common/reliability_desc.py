@@ -1,3 +1,6 @@
+from .types import TableDef
+
+
 def init_table_query() -> str:
     return """
         CREATE TABLE Reliability (
@@ -7,7 +10,7 @@ def init_table_query() -> str:
         );
     """
 
-Table_Def: dict[str, dict[str, type] | None] = {
+Table_Def: TableDef = {
     "Reliability": {
         "poseId": int,
         "torsoHalfMin": float,
