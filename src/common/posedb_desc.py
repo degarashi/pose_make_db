@@ -54,7 +54,7 @@ def init_table_query() -> str:
     """
 
 
-Table_Def: dict[str, dict[str, type]] = {
+Table_Def: dict[str, dict[str, type] | None] = {
     "File": {
         "id": int,
         "path": str,
