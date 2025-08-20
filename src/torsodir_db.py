@@ -279,8 +279,8 @@ def process(database_path: Path, init_db: bool) -> None:
     with MasseTorsoDB(str(database_path), init_db) as db:
         db.calc_torsodir()
         db.commit()
-        normalized_vector = np.array([-1, -1, -1]) / np.linalg.norm([-1, -1, -1])
-        db._test_fetch_vec(normalized_vector.tolist(), 10)
+        # normalized_vector = np.array([-1, -1, -1]) / np.linalg.norm([-1, -1, -1])
+        # db._test_fetch_vec(normalized_vector.tolist(), 10)
 
 
 if __name__ == "__main__":
