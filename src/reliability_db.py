@@ -1,4 +1,5 @@
 import argparse
+from contextlib import suppress
 from pathlib import Path
 
 from common.argparse_aux import str_to_bool
@@ -94,27 +95,37 @@ class ReliabilityDB(Db):
         )
 
 
-if __name__ == "__main__":
-
-    def init_parser():
-        parser = argparse.ArgumentParser(
-            description="Extract joints position by using BlazePose"
-        )
-        # データベースファイル
+def add_optional_arguments_to_parser(parser: argparse.ArgumentParser) -> None:
+    # データベースファイル
+    with suppress(argparse.ArgumentError):
         parser.add_argument(
             "--database_path",
             type=Path,
             default=DEFAULT_DB_PATH,
             help="SQLite3 database file",
         )
-        # データベースを初期化するか
+    # データベースを初期化するか
+    with suppress(argparse.ArgumentError):
         parser.add_argument(
             "--init_db", type=str_to_bool, default=False, help="Initialize DB"
         )
-        add_logging_args(parser)
-        return parser.parse_args()
+    add_logging_args(parser)
 
-    argv = init_parser()
-    apply_logging_option(argv)
-    with ReliabilityDB(argv.database_path, argv.init_db) as db:
+
+def process(database_path: Path, init_db: bool) -> None:
+    with ReliabilityDB(database_path, init_db) as db:
         db.calculate_reliability()
+
+
+if __name__ == "__main__":
+
+    def init_parser() -> argparse.ArgumentParser:
+        parser = argparse.ArgumentParser(
+            description="Extract joints position by using BlazePose"
+        )
+        add_optional_arguments_to_parser(parser)
+        return parser
+
+    argv = init_parser().parse_args()
+    apply_logging_option(argv)
+    process(argv.database_path, argv.init_db)
