@@ -2,6 +2,7 @@
 
 import argparse
 import logging as L
+from contextlib import suppress
 from enum import Enum
 from pathlib import Path
 from typing import Optional
@@ -257,28 +258,40 @@ class MasseTorsoDB(VecDb):
         """)
 
 
-if __name__ == "__main__":
-
-    def init_parser() -> argparse.ArgumentParser:
-        parser = argparse.ArgumentParser(
-            description="Extract joints position by using BlazePose"
-        )
+def add_optional_arguments_to_parser(parser: argparse.ArgumentParser) -> None:
+    # データベースファイル
+    with suppress(argparse.ArgumentError):
         parser.add_argument(
             "--database_path",
             type=Path,
             default=DEFAULT_DB_PATH,
             help="SQLite3 database file",
         )
+    # データベースを初期化するか
+    with suppress(argparse.ArgumentError):
         parser.add_argument(
             "--init_db", type=str_to_bool, default=False, help="Initialize DB"
         )
-        add_logging_args(parser)
-        return parser
+    add_logging_args(parser)
 
-    argv = init_parser().parse_args()
-    apply_logging_option(argv)
-    with MasseTorsoDB(str(argv.database_path), argv.init_db) as db:
+
+def process(database_path: Path, init_db: bool) -> None:
+    with MasseTorsoDB(str(database_path), init_db) as db:
         db.calc_torsodir()
         db.commit()
         normalized_vector = np.array([-1, -1, -1]) / np.linalg.norm([-1, -1, -1])
         db._test_fetch_vec(normalized_vector.tolist(), 10)
+
+
+if __name__ == "__main__":
+
+    def init_parser() -> argparse.ArgumentParser:
+        parser = argparse.ArgumentParser(
+            description="Extract joints position by using BlazePose"
+        )
+        add_optional_arguments_to_parser(parser)
+        return parser
+
+    argv = init_parser().parse_args()
+    apply_logging_option(argv)
+    process(argv.database_path, argv.init_db)
