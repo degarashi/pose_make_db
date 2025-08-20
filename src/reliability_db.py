@@ -78,6 +78,13 @@ class ReliabilityDB(Db):
                 )
             )
 
+        # 一旦古い情報を削除
+        cursor.execute(
+            """
+            DELETE FROM Reliability
+            WHERE poseId IN (SELECT id FROM Pose)
+            """
+        )
         # 計算した信頼性値をデータベースに書き込む
         cursor.executemany(
             """
