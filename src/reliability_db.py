@@ -121,7 +121,7 @@ if __name__ == "__main__":
 
     def init_parser() -> argparse.ArgumentParser:
         parser = argparse.ArgumentParser(
-            description="Extract joints position by using BlazePose"
+            description="Calculate reliability of each joint"
         )
         add_optional_arguments_to_parser(parser)
         return parser
