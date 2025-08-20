@@ -3,6 +3,7 @@ import logging as L
 import os
 import re
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from contextlib import suppress
 from hashlib import sha512
 from pathlib import Path
 
@@ -21,9 +22,7 @@ DEFAULT_MODEL_PATH = default_path.TEST_DATA_PATH / "pose_landmarker_heavy.task"
 
 
 class PoseDB(Db):
-    def __init__(
-        self, dbpath: str, clear_table: bool, row_name: bool = False
-    ):
+    def __init__(self, dbpath: str, clear_table: bool, row_name: bool = False):
         super().__init__(dbpath, clear_table, row_name)
 
     @property
@@ -39,23 +38,42 @@ class PoseDB(Db):
         cur = self.cursor()
         NAMES: list[str] = [
             "nose",
-            "left_eye_inner", "left_eye", "left_eye_outer",
-            "right_eye_inner", "right_eye", "right_eye_outer",
-            "left_ear", "right_ear",
-            "mouth_left", "mouth_right",
-            "left_shoulder", "right_shoulder",
-            "left_elbow", "right_elbow",
-            "left_wrist", "right_wrist",
-            "left_pinky", "right_pinky",
-            "left_index", "right_index",
-            "left_thumb", "right_thumb",
-            "left_hip", "right_hip",
-            "left_knee", "right_knee",
-            "left_ankle", "right_ankle",
-            "left_heel", "right_heel",
-            "left_foot_index", "right_foot_index",
+            "left_eye_inner",
+            "left_eye",
+            "left_eye_outer",
+            "right_eye_inner",
+            "right_eye",
+            "right_eye_outer",
+            "left_ear",
+            "right_ear",
+            "mouth_left",
+            "mouth_right",
+            "left_shoulder",
+            "right_shoulder",
+            "left_elbow",
+            "right_elbow",
+            "left_wrist",
+            "right_wrist",
+            "left_pinky",
+            "right_pinky",
+            "left_index",
+            "right_index",
+            "left_thumb",
+            "right_thumb",
+            "left_hip",
+            "right_hip",
+            "left_knee",
+            "right_knee",
+            "left_ankle",
+            "right_ankle",
+            "left_heel",
+            "right_heel",
+            "left_foot_index",
+            "right_foot_index",
         ]
-        assert len(NAMES) == BLAZEPOSE_LANDMARK_LEN  # ランドマーク名の数が一致することを確認
+        assert (
+            len(NAMES) == BLAZEPOSE_LANDMARK_LEN
+        )  # ランドマーク名の数が一致することを確認
 
         names2: list[tuple[str, ...]] = []
         for n in NAMES:
@@ -137,9 +155,7 @@ class PoseDB(Db):
         # PersonIdを作成
         cur = self.cursor()
         # Personはとりあえず0固定
-        cur.execute(
-            "INSERT INTO Pose(fileId, personIndex) VALUES (?,?)", (image_id, 0)
-        )
+        cur.execute("INSERT INTO Pose(fileId, personIndex) VALUES (?,?)", (image_id, 0))
         pose_id: int = cur.execute("SELECT last_insert_rowid()").fetchone()[
             0
         ]  # 新規姿勢推定IDを取得
@@ -158,7 +174,9 @@ class PoseDB(Db):
                     mark_index,
                     m.presence,
                     m.visibility,
-                    pos[0], -pos[1], pos[2],
+                    pos[0],
+                    -pos[1],
+                    pos[2],
                 )
             )
             mark_index += 1
@@ -174,65 +192,33 @@ def _estimate_proc(path: str, model_path: str) -> list[Landmark]:
         return e.estimate(path)
 
 
-if __name__ == "__main__":
+def process(
+    target_dir: Path,
+    model_path: Path,
+    database_path: Path,
+    init_db: bool,
+    max_workers: int,
+) -> None:
+    # モデルファイルの存在チェック
+    if not model_path.exists():
+        L.error(f"モデルファイルが見つかりません: {model_path}")
+        exit(1)
 
-    def init_parser():
-        parser = argparse.ArgumentParser(
-            description="Extract joints position by using BlazePose"
-        )
-        # SQLite3データベースファイル
-        parser.add_argument(
-            "--database_path",
-            type=Path,
-            default=default_path.DEFAULT_DB_PATH,
-            help="SQLite3 database file",
-        )
-        # データベースを初期化するか
-        parser.add_argument(
-            "--init_db", type=str_to_bool, default=False, help="Initialize DB"
-        )
-        # 処理対象の画像ディレクトリ
-        parser.add_argument("target_dir", type=Path, help="Images directory")
+    # データベースファイルの存在チェック（init_dbがFalseの場合のみ）
+    if not init_db and not database_path.exists():
+        L.error(f"データベースファイルが見つかりません: {database_path}")
+        exit(1)
 
-        # モデルデータパス
-        parser.add_argument(
-            "--model_path",
-            type=Path,
-            default=DEFAULT_MODEL_PATH,
-            help="Model data path",
-        )
-        # workerの数を指定するオプション
-        # デフォルト値をCPUコア数に設定
-        parser.add_argument(
-            "--workers",
-            type=int,
-            default=os.cpu_count(),  # os.cpu_count() を使用してCPUコア数を取得
-            help="Number of worker processes",
-        )
-        # ロギング関連の引数を追加
-        # --verbose や --quiet などのオプションが利用可能
-        log.add_logging_args(parser)
-
-        return parser.parse_args()
-
-    args = init_parser()
-
-    model_path: Path = args.model_path
-    assert model_path.exists(), f"モデルファイルが見つかりません: {model_path}"
-
-    database_path: Path = args.database_path
-    assert (
-        database_path.exists()
-    ), f"データベースファイルが見つかりません: {database_path}"
-
-    # パースされた引数に基づいてロギング設定を適用
-    log.apply_logging_option(args)
+    # worker数が0以下の場合のエラーハンドリング
+    if max_workers <= 0:
+        L.error("ワーカー数は正の整数である必要があります")
+        exit(1)
 
     # PoseDB オブジェクトを初期化し、データベースファイルを開く
-    # args.init_db が True の場合、初期化される
-    with PoseDB(args.database_path, args.init_db) as db:
+    # init_db が True の場合、初期化される
+    with PoseDB(database_path, init_db) as db:
         # 処理対象のディレクトリ
-        t_dir: Path = args.target_dir
+        t_dir: Path = target_dir
 
         # 指定されたディレクトリ (target_dir) 内のすべてのファイルを再帰的に検索し、
         # ファイル名が .jpg または .jpeg で終わるもの（大文字小文字を区別しない）をリストアップ
@@ -243,7 +229,6 @@ if __name__ == "__main__":
         ]
 
         # 見つかった画像ファイルのパスをデータベースにロード、保存
-        max_workers: int = args.workers
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
             # 各ファイルに対して_estimate_proc関数を呼び出すFutureオブジェクトを作成
             # estimateオブジェクトは各プロセスで生成
@@ -278,3 +263,65 @@ if __name__ == "__main__":
                     L.error(f"{param[0]} generated an exception: {exc}")
 
         db.commit()
+
+
+def add_optional_arguments_to_parser(parser: argparse.ArgumentParser) -> None:
+    # SQLite3データベースファイル
+    with suppress(argparse.ArgumentError):
+        parser.add_argument(
+            "--database_path",
+            type=Path,
+            default=default_path.DEFAULT_DB_PATH,
+            help="SQLite3 database file",
+        )
+
+    # データベースを初期化するか
+    with suppress(argparse.ArgumentError):
+        parser.add_argument(
+            "--init_db", type=str_to_bool, default=False, help="Initialize DB"
+        )
+
+    # モデルデータパス
+    with suppress(argparse.ArgumentError):
+        parser.add_argument(
+            "--model_path",
+            type=Path,
+            default=DEFAULT_MODEL_PATH,
+            help="Model data path",
+        )
+    # workerの数を指定するオプション
+    # デフォルト値をCPUコア数に設定
+    with suppress(argparse.ArgumentError):
+        parser.add_argument(
+            "--max_workers",
+            type=int,
+            default=os.cpu_count(),  # os.cpu_count() を使用してCPUコア数を取得
+            help="Number of worker processes",
+        )
+    # ロギング関連の引数を追加
+    # --verbose や --quiet などのオプションが利用可能
+    log.add_logging_args(parser)
+
+
+if __name__ == "__main__":
+
+    def init_parser() -> argparse.ArgumentParser:
+        parser = argparse.ArgumentParser(
+            description="Extract joints position by using BlazePose"
+        )
+        # 処理対象の画像ディレクトリ
+        parser.add_argument("target_dir", type=Path, help="Images directory")
+        add_optional_arguments_to_parser(parser)
+        return parser
+
+    args = init_parser().parse_args()
+    # パースされた引数に基づいてロギング設定を適用
+    log.apply_logging_option(args)
+
+    process(
+        args.target_dir,
+        args.model_path,
+        args.database_path,
+        args.init_db,
+        args.max_workers,
+    )
