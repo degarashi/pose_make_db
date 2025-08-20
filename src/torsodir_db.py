@@ -37,7 +37,7 @@ class MasseTorsoDB(VecDb):
     def table_def(self) -> TableDef:
         return Table_Def
 
-    def search(self, dir_v: list[float], limit: int) -> None:
+    def _test_fetch_vec(self, dir_v: list[float], limit: int) -> None:
         cur = self.cursor()
         cur.execute(
             """
@@ -52,6 +52,8 @@ class MasseTorsoDB(VecDb):
             deserialized_torsoDir = vec_deserialize(ent["torsoDir"])
             print(f"Distance: {ent['distance']}, TorsoDir: {deserialized_torsoDir}")
 
+    def _test_fetch_vec2(self, dir_v: list[float], limit: int) -> None:
+        cur = self.cursor()
         cur.execute(
             """
             WITH knn_match AS (
@@ -279,4 +281,4 @@ if __name__ == "__main__":
         db.calc_torsodir()
         db.commit()
         normalized_vector = np.array([-1, -1, -1]) / np.linalg.norm([-1, -1, -1])
-        db.search(normalized_vector.tolist(), 10)
+        db._test_fetch_vec(normalized_vector.tolist(), 10)
