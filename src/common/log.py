@@ -1,5 +1,6 @@
-import logging
 import argparse
+import logging
+from contextlib import suppress
 from typing import Dict
 
 # ログレベル名から数値へのマッピング
@@ -19,12 +20,13 @@ def add_logging_args(parser: argparse.ArgumentParser) -> None:
     Args:
         parser (argparse.ArgumentParser): 引数を追加するパーサーオブジェクト
     """
-    parser.add_argument(
-        "--log_level",
-        type=str,
-        default="WARNING",
-        help="log level (e.g., DEBUG, INFO, WARNING, ERROR, CRITICAL)",
-    )
+    with suppress(argparse.ArgumentError):
+        parser.add_argument(
+            "--log_level",
+            type=str,
+            default="WARNING",
+            help="log level (e.g., DEBUG, INFO, WARNING, ERROR, CRITICAL)",
+        )
 
 
 def apply_logging_option(args: argparse.Namespace) -> None:
