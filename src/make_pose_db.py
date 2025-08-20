@@ -248,7 +248,7 @@ def process(
 
             # tqdmで進捗を表示するために、完了したFutureを順番に処理
             for future in tqdm(
-                as_completed(futures), total=len(image_paths), desc="Processing images"
+                as_completed(futures), total=len(futures), desc="Processing images"
             ):
                 param = futures[future]
 
