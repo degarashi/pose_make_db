@@ -1,4 +1,4 @@
-# (make_pose_db.py, reliability_db.py, torsodir_db.py)
+# (make_pose_db.py, reliability_db.py, torsodir_db.py, make_tags.py)
 # これらを統合した物
 
 import argparse
@@ -7,6 +7,7 @@ from pathlib import Path
 import make_pose_db as mp
 import reliability_db as rel
 import torsodir_db as tor
+import make_tags as tag
 from common.log import apply_logging_option
 
 if __name__ == "__main__":
@@ -21,6 +22,7 @@ if __name__ == "__main__":
         mp.add_optional_arguments_to_parser(parser)
         rel.add_optional_arguments_to_parser(parser)
         tor.add_optional_arguments_to_parser(parser)
+        tag.add_optional_arguments_to_parser(parser)
         return parser
 
     arg = init_parser().parse_args()
@@ -31,3 +33,4 @@ if __name__ == "__main__":
     mp.process(arg.target_dir, arg.model_path, database_path, init_db, arg.max_workers)
     rel.process(database_path, init_db)
     tor.process(database_path, init_db)
+    tag.process(database_path, init_db, arg.tags)
