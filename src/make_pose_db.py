@@ -118,10 +118,8 @@ class PoseDB(Db):
             "INSERT INTO File(path, size, timestamp, hash) VALUES (?,?,?,?)",
             (path.as_posix(), stat.st_size, stat.st_mtime, checksum),
         )
-        file_id: int = cur.execute("SELECT last_insert_rowid()").fetchone()[
-            0
-        ]  # 新規ファイルIDを取得
-        return True, file_id  # 新規登録フラグとファイルIDを返す
+        # 新規登録フラグとファイルIDを返す
+        return True, cur.lastrowid
 
     def _remove_file(self, path: Path) -> None:
         # 指定されたパスのファイルをデータベースから削除する
