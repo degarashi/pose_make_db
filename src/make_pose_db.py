@@ -234,6 +234,7 @@ def process(
             # estimateオブジェクトは各プロセスで生成
             futures: dict[any, tuple[Path, int]] = {}
             for path in image_paths:
+                path = path.absolute()
                 # 画像ファイルが既に登録されてるか確認
                 (b_id_created, image_id) = db.register_imagefile(path)
                 L.debug(f"fileId={image_id}")
