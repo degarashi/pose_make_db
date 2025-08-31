@@ -2,12 +2,13 @@
 # これらを統合した物
 
 import argparse
+import logging as L
 from pathlib import Path
 
 import make_pose_db as mp
+import make_tags as tag
 import reliability_db as rel
 import torsodir_db as tor
-import make_tags as tag
 from common.log import apply_logging_option
 
 if __name__ == "__main__":
@@ -30,7 +31,11 @@ if __name__ == "__main__":
 
     database_path: Path = arg.database_path
     init_db: bool = arg.init_db
+    L.info("Processing Pose Estimate")
     mp.process(arg.target_dir, arg.model_path, database_path, init_db, arg.max_workers)
+    L.info("Processing Reliability")
     rel.process(database_path, init_db)
+    L.info("Processing TorsoDir")
     tor.process(database_path, init_db)
+    L.info("Processing Tag")
     tag.process(database_path, init_db, arg.tags)
