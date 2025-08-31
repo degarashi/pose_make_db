@@ -29,5 +29,5 @@ if __name__ == "__main__":
     database_path: Path = arg.database_path
     init_db: bool = arg.init_db
     mp.process(arg.target_dir, arg.model_path, database_path, init_db, arg.max_workers)
-    rel.process(database_path, False)
-    tor.process(database_path, False)
+    rel.process(database_path, init_db)
+    tor.process(database_path, init_db)
