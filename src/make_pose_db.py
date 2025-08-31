@@ -87,7 +87,7 @@ class PoseDB(Db):
         cur = self.cursor()
 
         # 既に登録した画像は計算を省く
-        cur.execute("SELECT size, timestamp, id FROM File WHERE path=?", (str(path),))
+        cur.execute("SELECT size, timestamp, id FROM File WHERE path=?", (path.as_posix(),))
         ent = cur.fetchone()
         if ent is not None:
             # ファイルサイズと更新時刻が一致する場合、既に登録済みと判断
@@ -107,7 +107,7 @@ class PoseDB(Db):
         ent = cur.fetchone()
         if ent is not None:
             # ハッシュ値が一致する場合、ファイルが移動したと判断し、パスを更新
-            cur.execute("UPDATE File SET path=? WHERE hash=?", (str(path), checksum))
+            cur.execute("UPDATE File SET path=? WHERE hash=?", (path.as_posix(), checksum))
             L.debug("already registered file(moved file)")
             return False, ent[0]  # 登録済みフラグとファイルIDを返す
         else:
@@ -116,7 +116,7 @@ class PoseDB(Db):
         # テーブルに格納
         cur.execute(
             "INSERT INTO File(path, size, timestamp, hash) VALUES (?,?,?,?)",
-            (str(path), stat.st_size, stat.st_mtime, checksum),
+            (path.as_posix(), stat.st_size, stat.st_mtime, checksum),
         )
         file_id: int = cur.execute("SELECT last_insert_rowid()").fetchone()[
             0
@@ -129,7 +129,7 @@ class PoseDB(Db):
 
         cur = self.cursor()
         # ---- File ----
-        cur.execute("SELECT id FROM File WHERE path=?", (str(path),))
+        cur.execute("SELECT id FROM File WHERE path=?", (path.as_posix(),))
         ent = cur.fetchone()
         if ent is None:
             L.debug("not found")
@@ -240,7 +240,7 @@ def process(
                 # 新たにファイルが登録されてないなら姿勢推定の必要なし (ランドマーク座標は既に登録されている)
                 if b_id_created:
                     futures[
-                        executor.submit(_estimate_proc, str(path), str(model_path))
+                        executor.submit(_estimate_proc, path.as_posix(), str(model_path))
                     ] = (
                         path,
                         image_id,
