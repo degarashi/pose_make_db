@@ -1,4 +1,5 @@
 import argparse
+import logging as L
 from contextlib import suppress
 from pathlib import Path
 
@@ -40,6 +41,43 @@ class TagsDB(Db):
             return cursor.lastrowid
         assert isinstance(id_row[0], int)
         return id_row[0]
+
+    def add_tags_auto(self, tag_root: str) -> None:
+        # tag_rootをPathに変換し、それが有効なディレクトリか判定
+        tag_root_path = Path(tag_root).absolute()
+        if not tag_root_path.is_dir():
+            L.error(f"Invalid directory path: {tag_root}")
+            return
+
+        cursor = self.cursor()
+        cursor.execute(
+            """
+            SELECT Pose.id, File.path
+            FROM Pose
+            INNER JOIN File
+                ON Pose.fileId = File.id
+            """
+        )
+        while True:
+            ent = cursor.fetchone()
+            if ent is None:
+                break
+            pose_id: int = ent[0]
+            file_path = Path(ent[1])
+            try:
+                # tag_root_pathを基準に相対パスを構築
+                file_path = file_path.relative_to(tag_root_path)
+                cursor2 = self.cursor()
+                for i in range(len(file_path.parts) - 1):
+                    tag_name = file_path.parts[i]
+                    tag_id = self._register_tag(tag_name)
+                    cursor2.execute(
+                        "INSERT INTO Tags (poseId, tagId) VALUES (?, ?)",
+                        (pose_id, tag_id),
+                    )
+            except ValueError:
+                # 無効なファイルパス
+                pass
 
     def add_tags(self, tags: list[tuple[str, str]]) -> None:
         """
@@ -110,10 +148,20 @@ def add_optional_arguments_to_parser(parser: argparse.ArgumentParser) -> None:
             default=[],
             help="Map directory keywords to tag names (key=tagname)",
         )
+    # 自動タグ付けルートディレクトリ
+    with suppress(argparse.ArgumentError):
+        parser.add_argument(
+            "--auto_tag",
+            type=str,
+            default=None,
+            help="automatic tagging root directory path",
+        )
     add_logging_args(parser)
 
 
-def process(database_path: Path, init_db: bool, tags: list[str]) -> None:
+def process(
+    database_path: Path, init_db: bool, tags: list[str], auto_tag: str | None
+) -> None:
     """
     タグ処理を実行
 
@@ -121,12 +169,15 @@ def process(database_path: Path, init_db: bool, tags: list[str]) -> None:
         database_path (Path): データベースファイルのパス
         init_db (bool): データベースを初期化するかどうか
         tags (list[str]): ディレクトリ名とタグ名のペアのリスト(["key=value", ...])
+        auto_tag (str|None): 自動タグ付けルートディレクトリパス
     """
     # ["key=value", ...]の形になっているのでtupleに分離
     tags_t: list[tuple[str, str]] = divide_to_tuple(tags)
 
     with TagsDB(database_path, init_db) as db:
         db.add_tags(tags_t)
+        if auto_tag is not None:
+            db.add_tags_auto(auto_tag)
 
 
 if __name__ == "__main__":
@@ -144,4 +195,4 @@ if __name__ == "__main__":
     # パースされた引数に基づいてロギング設定を適用
     log.apply_logging_option(args)
 
-    process(args.database_path, args.init_db, args.tags)
+    process(args.database_path, args.init_db, args.tags, args.auto_tag)

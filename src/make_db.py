@@ -38,4 +38,4 @@ if __name__ == "__main__":
     L.info("Processing TorsoDir")
     tor.process(database_path, init_db)
     L.info("Processing Tag")
-    tag.process(database_path, init_db, arg.tags)
+    tag.process(database_path, init_db, arg.tags, arg.auto_tag)
