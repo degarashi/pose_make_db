@@ -53,7 +53,7 @@ class TagsDB(Db):
             dir_name, tag_name = tag
             tag_id = self._register_tag(tag_name)
 
-            # タグに合致する画像を一括取得
+            # タグに合致するファイルパスを持つ画像を一括取得
             cursor.execute(
                 """
                 SELECT Pose.id
