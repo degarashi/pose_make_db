@@ -34,12 +34,12 @@ class TagsDB(Db):
         """タグ名を登録し、そのIDを返す"""
         cursor = self.cursor()
         cursor.execute("SELECT id FROM TagInfo WHERE name=?", (name,))
-        id = cursor.fetchone()
-        if id is None:
+        id_row = cursor.fetchone()
+        if id_row is None:
             cursor.execute("INSERT INTO TagInfo(name) VALUES (?)", (name,))
             return cursor.lastrowid
-        assert type(id[0]) is int
-        return id[0]
+        assert isinstance(id_row[0], int)
+        return id_row[0]
 
     def add_tags(self, tags: list[tuple[str, str]]) -> None:
         """
