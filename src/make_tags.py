@@ -1,10 +1,10 @@
 import argparse
-import logging as L
 from contextlib import suppress
 from pathlib import Path
 
 from common import log
 from common.argparse_aux import str_to_bool
+from common.convert import divide_to_tuple
 from common.db import Db
 from common.default_path import DEFAULT_DB_PATH
 from common.log import add_logging_args, apply_logging_option
@@ -127,29 +127,6 @@ def process(database_path: Path, init_db: bool, tags: list[str]) -> None:
 
     with TagsDB(database_path, init_db) as db:
         db.add_tags(tags_t)
-
-
-def divide_to_tuple(tags: list[str]) -> list[tuple[str, str]]:
-    """
-    タグ文字列リストをキーと値のタプルのリストに分割
-
-    Args:
-        tags (list[str]): タグ文字列のリスト（例: ["dir1=tagA", "dir2=tagB"]）
-
-    Returns:
-        list[tuple[str, str]]: キーと値のタプルのリスト
-    """
-    parsed_tags: list[tuple[str, str]] = []
-    for tag_str in tags:
-        if "=" in tag_str:
-            # (valueがスペースを含んでいる場合でも動く筈)
-            key, value = tag_str.split("=", 1)
-            parsed_tags.append((key, value))
-        else:
-            L.warning(
-                f"Skipping malformed tag: {tag_str}. Expected format 'key=value'."
-            )
-    return parsed_tags
 
 
 if __name__ == "__main__":
