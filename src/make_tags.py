@@ -22,15 +22,16 @@ class TagsDB(Db):
 
     @property
     def init_query(self) -> str:
-        # テーブル定義に基づいて初期化クエリを返す
+        """テーブル定義に基づく初期化クエリ"""
         return init_table_query()
 
     @property
     def table_def(self) -> TableDef:
-        # テーブル定義を返す
+        """テーブル定義"""
         return Table_Def
 
     def _register_tag(self, name: str) -> int:
+        """タグ名を登録し、そのIDを返す"""
         cursor = self.cursor()
         cursor.execute("SELECT id FROM TagInfo WHERE name=?", (name,))
         id = cursor.fetchone()
@@ -41,6 +42,12 @@ class TagsDB(Db):
         return id[0]
 
     def add_tags(self, tags: list[tuple[str, str]]) -> None:
+        """
+        ディレクトリ名とタグ名のペアを元にタグを追加
+
+        Args:
+            tags (list[tuple[str, str]]): ディレクトリ名とタグ名のペアのリスト
+        """
         cursor = self.cursor()
         for tag in tags:
             dir_name, tag_name = tag
@@ -71,6 +78,8 @@ class TagsDB(Db):
 
 
 class ExtendAction(argparse.Action):
+    """ArgParseで使用する、引数リストを拡張するアクション"""
+
     def __call__(self, parser, namespace, values, option_string=None):
         items = getattr(namespace, self.dest, []) or []
         items.extend(values)
@@ -78,6 +87,7 @@ class ExtendAction(argparse.Action):
 
 
 def add_optional_arguments_to_parser(parser: argparse.ArgumentParser) -> None:
+    """オプション引数をパーサーに追加"""
     # データベースファイル
     with suppress(argparse.ArgumentError):
         parser.add_argument(
@@ -104,15 +114,31 @@ def add_optional_arguments_to_parser(parser: argparse.ArgumentParser) -> None:
 
 
 def process(database_path: Path, init_db: bool, tags: list[str]) -> None:
-    # [key=value, ...]の形になっているのでtupleに分離
+    """
+    タグ処理を実行
+
+    Args:
+        database_path (Path): データベースファイルのパス
+        init_db (bool): データベースを初期化するかどうか
+        tags (list[str]): ディレクトリ名とタグ名のペアのリスト(["key=value", ...])
+    """
+    # ["key=value", ...]の形になっているのでtupleに分離
     tags_t: list[tuple[str, str]] = divide_to_tuple(tags)
 
     with TagsDB(database_path, init_db) as db:
         db.add_tags(tags_t)
 
 
-# [key=value, ...]の形になっているのでtupleに分離
 def divide_to_tuple(tags: list[str]) -> list[tuple[str, str]]:
+    """
+    タグ文字列リストをキーと値のタプルのリストに分割
+
+    Args:
+        tags (list[str]): タグ文字列のリスト（例: ["dir1=tagA", "dir2=tagB"]）
+
+    Returns:
+        list[tuple[str, str]]: キーと値のタプルのリスト
+    """
     parsed_tags: list[tuple[str, str]] = []
     for tag_str in tags:
         if "=" in tag_str:
