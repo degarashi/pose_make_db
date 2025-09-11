@@ -58,6 +58,7 @@ class TagsDB(Db):
                 ON Pose.fileId = File.id
             """
         )
+        exec_l: list[tuple[int, int]] = []
         while True:
             ent = cursor.fetchone()
             if ent is None:
@@ -67,17 +68,19 @@ class TagsDB(Db):
             try:
                 # tag_root_pathを基準に相対パスを構築
                 file_path = file_path.relative_to(tag_root_path)
-                cursor2 = self.cursor()
                 for i in range(len(file_path.parts) - 1):
                     tag_name = file_path.parts[i]
                     tag_id = self._register_tag(tag_name)
-                    cursor2.execute(
-                        "INSERT INTO Tags (poseId, tagId) VALUES (?, ?)",
-                        (pose_id, tag_id),
-                    )
+                    exec_l.append((pose_id, tag_id))
             except ValueError:
                 # 無効なファイルパス
                 pass
+        if len(exec_l) > 0:
+            cursor2 = self.cursor()
+            cursor2.executemany(
+                "INSERT INTO Tags (poseId, tagId) VALUES (?, ?)",
+                exec_l,
+            )
 
     def add_tags(self, tags: list[tuple[str, str]]) -> None:
         """
