@@ -195,28 +195,28 @@ def process(
     database_path: Path,
     init_db: bool,
     max_workers: int,
-) -> None:
+) -> bool:
     # モデルファイルの存在チェック
     if not model_path.exists():
         L.error(f"モデルファイルが見つかりません: {model_path}")
-        exit(1)
+        return False
 
     # init_db が True の場合、既存のデータが削除されるのでここで確認を出し、noと答えたらすぐ終了
     if init_db:
         confirm = input("データベースを初期化します。既存のデータは削除されます。続行しますか？ (y/N): ")
         if confirm.lower() != 'y':
             L.info("処理を中断しました。")
-            exit(1)
+            return False
 
     # データベースファイルの存在チェック（init_dbがFalseの場合のみ）
     if not init_db and not database_path.exists():
         L.error(f"データベースファイルが見つかりません: {database_path}")
-        exit(1)
+        return False
 
     # worker数が0以下の場合のエラーハンドリング
     if max_workers <= 0:
         L.error("ワーカー数は正の整数である必要があります")
-        exit(1)
+        return False
 
     # PoseDB オブジェクトを初期化し、データベースファイルを開く
     # init_db が True の場合、初期化される
@@ -268,6 +268,7 @@ def process(
                     L.error(f"{param[0]} generated an exception: {exc}")
 
         db.commit()
+    return True
 
 
 def add_optional_arguments_to_parser(parser: argparse.ArgumentParser) -> None:
