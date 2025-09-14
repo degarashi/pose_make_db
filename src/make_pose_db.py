@@ -84,13 +84,15 @@ class PoseDB(Db):
     def register_imagefile(self, path: Path) -> tuple[bool, int]:
         L.debug(f"register_imagefile: {path}")
         stat = path.stat()  # ファイルの更新時刻を取得
+        # たまにintでない事があるので明示的に変換
+        st_mtime = int(stat.st_mtime)
         with closing(self.cursor()) as cur:
             # 既に登録した画像は計算を省く
             cur.execute("SELECT size, timestamp, id FROM File WHERE path=?", (path.as_posix(),))
             ent = cur.fetchone()
             if ent is not None:
                 # ファイルサイズと更新時刻が一致する場合、既に登録済みと判断
-                if stat.st_size == ent[0] and stat.st_mtime == ent[1]:
+                if stat.st_size == ent[0] and st_mtime == ent[1]:
                     L.debug("already registered file(size and time)")
                     return False, ent[2]  # 登録済みフラグとファイルIDを返す
 
@@ -115,7 +117,7 @@ class PoseDB(Db):
             # テーブルに格納
             cur.execute(
                 "INSERT INTO File(path, size, timestamp, hash) VALUES (?,?,?,?)",
-                (path.as_posix(), stat.st_size, stat.st_mtime, checksum),
+                (path.as_posix(), stat.st_size, st_mtime, checksum),
             )
             # 新規登録フラグとファイルIDを返す
             return True, cur.lastrowid
