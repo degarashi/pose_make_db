@@ -201,6 +201,13 @@ def process(
         L.error(f"モデルファイルが見つかりません: {model_path}")
         exit(1)
 
+    # init_db が True の場合、既存のデータが削除されるのでここで確認を出し、noと答えたらすぐ終了
+    if init_db:
+        confirm = input("データベースを初期化します。既存のデータは削除されます。続行しますか？ (y/N): ")
+        if confirm.lower() != 'y':
+            L.info("処理を中断しました。")
+            exit(1)
+
     # データベースファイルの存在チェック（init_dbがFalseの場合のみ）
     if not init_db and not database_path.exists():
         L.error(f"データベースファイルが見つかりません: {database_path}")
