@@ -32,7 +32,8 @@ if __name__ == "__main__":
     database_path: Path = arg.database_path
     init_db: bool = arg.init_db
     L.info("Processing Pose Estimate")
-    mp.process(arg.target_dir, arg.model_path, database_path, init_db, arg.max_workers)
+    if not mp.process(arg.target_dir, arg.model_path, database_path, init_db, arg.max_workers):
+        exit(1)
     L.info("Processing Reliability")
     rel.process(database_path, init_db)
     L.info("Processing TorsoDir")
