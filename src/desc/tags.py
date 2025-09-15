@@ -1,4 +1,4 @@
-from .types import TableDef
+from common.types import TableDef
 
 
 def init_table_query() -> str:

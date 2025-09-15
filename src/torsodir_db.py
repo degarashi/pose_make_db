@@ -14,7 +14,7 @@ from common.constants import BLAZEPOSE_LANDMARK_LEN
 from common.default_path import DEFAULT_DB_PATH
 from common.log import add_logging_args, apply_logging_option
 from common.serialize import vec_deserialize, vec_serialize
-from common.torsodir_desc import Table_Def, init_table_query
+from desc.torsodir import Table_Def, init_table_query
 from common.types import TableDef
 from common.vec_db import VecDb
 

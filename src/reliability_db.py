@@ -6,7 +6,7 @@ from common.argparse_aux import str_to_bool
 from common.db import Db
 from common.default_path import DEFAULT_DB_PATH
 from common.log import add_logging_args, apply_logging_option
-from common.reliability_desc import Table_Def, init_table_query
+from desc.reliability import Table_Def, init_table_query
 from common.types import TableDef
 
 

@@ -13,7 +13,7 @@ from common import default_path, log
 from common.argparse_aux import str_to_bool
 from common.constants import BLAZEPOSE_LANDMARK_LEN
 from common.db import Db
-from common.posedb_desc import Table_Def, init_table_query
+from desc.posedb import Table_Def, init_table_query
 from common.types import TableDef
 from pose_estimate import Estimate, EstimateFailed, Landmark
 

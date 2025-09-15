@@ -2,7 +2,7 @@
     BlazePoseの解析結果を格納しておくデータベース概要
 """
 
-from .types import TableDef
+from common.types import TableDef
 
 # 座標は右手座標系
 # X 右方向+

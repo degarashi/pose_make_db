@@ -2,7 +2,7 @@
 マッスTorsorDirの解析結果を格納しておくデータベース概要
 """
 
-from .types import TableDef
+from common.types import TableDef
 
 
 def init_table_query() -> str:

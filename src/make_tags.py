@@ -9,7 +9,7 @@ from common.convert import divide_to_tuple
 from common.db import Db
 from common.default_path import DEFAULT_DB_PATH
 from common.log import add_logging_args, apply_logging_option
-from common.tags_desc import Table_Def, init_table_query
+from desc.tags import Table_Def, init_table_query
 from common.types import TableDef
 
 
