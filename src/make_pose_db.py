@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from common import default_path, log
 from common.argparse_aux import str_to_bool
-from common.constants import BLAZEPOSE_LANDMARK_LEN
+from common.constants import BlazePoseLandmark
 from common.db import Db
 from desc.posedb import Table_Def, init_table_query
 from common.types import TableDef
@@ -36,48 +36,9 @@ class PoseDB(Db):
     def post_table_initialized(self) -> None:
         # ランドマーク名のリストを作成し、データベースに挿入する
         with closing(self.cursor()) as cur:
-            NAMES: list[str] = [
-                "nose",
-                "left_eye_inner",
-                "left_eye",
-                "left_eye_outer",
-                "right_eye_inner",
-                "right_eye",
-                "right_eye_outer",
-                "left_ear",
-                "right_ear",
-                "mouth_left",
-                "mouth_right",
-                "left_shoulder",
-                "right_shoulder",
-                "left_elbow",
-                "right_elbow",
-                "left_wrist",
-                "right_wrist",
-                "left_pinky",
-                "right_pinky",
-                "left_index",
-                "right_index",
-                "left_thumb",
-                "right_thumb",
-                "left_hip",
-                "right_hip",
-                "left_knee",
-                "right_knee",
-                "left_ankle",
-                "right_ankle",
-                "left_heel",
-                "right_heel",
-                "left_foot_index",
-                "right_foot_index",
-            ]
-            assert (
-                len(NAMES) == BLAZEPOSE_LANDMARK_LEN
-            )  # ランドマーク名の数が一致することを確認
-
             names2: list[tuple[str, ...]] = []
-            for n in NAMES:
-                names2.append((n,))
+            for n in BlazePoseLandmark:
+                names2.append((n.name,))
             # ランドマーク名をデータベースに挿入
             cur.executemany("INSERT INTO LandmarkName(name) VALUES (?)", names2)
 
