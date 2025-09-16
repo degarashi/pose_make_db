@@ -19,7 +19,7 @@ def init_table_query() -> str:
         );
         CREATE VIRTUAL TABLE MasseTorsoVec USING vec0(
             poseId      INTEGER NOT NULL UNIQUE,
-            torsoDir    float[3]
+            dir         float[3]
         );
     """
 

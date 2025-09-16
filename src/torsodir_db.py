@@ -42,15 +42,15 @@ class MasseTorsoDB(VecDb):
         cur = self.cursor()
         cur.execute(
             """
-            SELECT poseId, torsoDir, distance FROM MasseTorsoVec
-            WHERE torsoDir MATCH ?
+            SELECT poseId, dir, distance FROM MasseTorsoVec
+            WHERE dir MATCH ?
             ORDER BY distance
             LIMIT ?
                 """,
             (vec_serialize(dir_v), limit),
         )
         for ent in cur.fetchall():
-            deserialized_torsoDir = vec_deserialize(ent["torsoDir"])
+            deserialized_torsoDir = vec_deserialize(ent["dir"])
             print(f"Distance: {ent['distance']}, TorsoDir: {deserialized_torsoDir}")
 
     def _test_fetch_vec2(self, dir_v: list[float], limit: int) -> None:
@@ -58,9 +58,9 @@ class MasseTorsoDB(VecDb):
         cur.execute(
             """
             WITH knn_match AS (
-                SELECT poseId, torsoDir, distance
+                SELECT poseId, dir, distance
                 FROM MasseTorsoVec
-                WHERE torsoDir MATCH ?
+                WHERE dir MATCH ?
                 ORDER BY distance
                 LIMIT ?
             )
@@ -253,7 +253,7 @@ class MasseTorsoDB(VecDb):
         curL.executemany("INSERT INTO MasseTorsoDir VALUES(?,?,?,?,?,?,?)", dir_data)
         # KNNサーチ用テーブルの書き込み
         curL.execute("""
-            INSERT INTO MasseTorsoVec(poseId, torsoDir)
+            INSERT INTO MasseTorsoVec(poseId, dir)
             SELECT poseId, embedded FROM MasseTorsoDir
         """)
 
