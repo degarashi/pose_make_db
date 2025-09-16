@@ -51,7 +51,7 @@ def init_table_query() -> str:
             z		        REAL NOT NULL,
             CHECK (presence BETWEEN 0 AND 1),
             CHECK (visibility BETWEEN 0 AND 1),
-            UNIQUE(poseId, landmarkIndex)
+            PRIMARY KEY(poseId, landmarkIndex)
         );
     """
 
