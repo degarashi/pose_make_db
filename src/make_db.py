@@ -8,6 +8,7 @@ import make_tags as tag
 import reliability_db as rel
 import torsodir_db as tor
 import spine_dir as spine
+import thigh_dir as thigh
 from common.log import apply_logging_option
 
 
@@ -69,6 +70,7 @@ MODULES: List[ModuleTask] = [
         "Tag", tag, lambda arg: (arg.database_path, arg.init_db, arg.tags, arg.auto_tag)
     ),
     ModuleTask("SpineDir", spine, lambda arg: (arg.database_path, arg.init_db)),
+    ModuleTask("ThighDir", thigh, lambda arg: (arg.database_path, arg.init_db)),
 ]
 
 
