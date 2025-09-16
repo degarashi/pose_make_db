@@ -36,11 +36,11 @@ class PoseDB(Db):
     def post_table_initialized(self) -> None:
         # ランドマーク名のリストを作成し、データベースに挿入する
         with closing(self.cursor()) as cur:
-            names2: list[tuple[str, ...]] = []
+            index = 0
             for n in BlazePoseLandmark:
-                names2.append((n.name,))
-            # ランドマーク名をデータベースに挿入
-            cur.executemany("INSERT INTO LandmarkName(name) VALUES (?)", names2)
+                # ランドマーク名をデータベースに挿入(0から始める必要がある為、一行ずつ)
+                cur.execute("INSERT INTO LandmarkName(id, name) VALUES (?,?)", (index, n.name,))
+                index += 1
 
     def register_imagefile(self, path: Path) -> tuple[bool, int]:
         L.debug(f"register_imagefile: {path}")
