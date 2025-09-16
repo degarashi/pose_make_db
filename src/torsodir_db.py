@@ -215,6 +215,22 @@ class MasseTorsoDB(VecDb):
                 )
                 half_min: float = curL.fetchone()[0]
 
+                # yaw_vecは、dir_v_npのx, z成分を抜き出して正規化したものを代入
+                xz = dir_v_np[[0, 2]]
+                norm_xz = np.linalg.norm(xz)
+                if norm_xz > 0:
+                    yaw_vec = (xz / norm_xz).tolist()
+                else:
+                    yaw_vec = [0.0, 0.0]
+
+                # pitch: XZ 平面に対する上下角
+                # np.arctan2(y, 水平方向の長さ) で求める
+                pitch_rad = float(np.arctan2(dir_v_np[1], norm_xz))
+                # -π/2 ～ +π/2 を -1 ～ +1 に線形マッピング
+                pitch_norm = float(pitch_rad / (np.pi / 2))
+                # 念のため範囲外をクリップ
+                pitch_norm = max(-1.0, min(1.0, pitch_norm))
+
                 # 結果を格納
                 dir_data.append(
                     (
@@ -225,6 +241,10 @@ class MasseTorsoDB(VecDb):
                         used_method,  # method
                         half_min,  # score (とりあえずhalf_minをそのまま入力)
                         vec_serialize(dir_v_np.tolist()),  # embedded
+                        yaw_vec[0],  # yaw_x
+                        yaw_vec[1],  # yaw_z
+                        vec_serialize(yaw_vec),  # embedded_yaw
+                        pitch_norm,  # pitch
                     )
                 )
         # 既に存在するposeIdを削除
@@ -241,11 +261,13 @@ class MasseTorsoDB(VecDb):
             """
         )
         # テーブルに書きこむ
-        curL.executemany("INSERT INTO MasseTorsoDir VALUES(?,?,?,?,?,?,?)", dir_data)
+        curL.executemany(
+            "INSERT INTO MasseTorsoDir VALUES(?,?,?,?,?,?,?,?,?,?,?)", dir_data
+        )
         # KNNサーチ用テーブルの書き込み
         curL.execute("""
-            INSERT INTO MasseTorsoVec(poseId, dir)
-            SELECT poseId, embedded FROM MasseTorsoDir
+            INSERT INTO MasseTorsoVec(poseId, dir, yaw)
+            SELECT poseId, embedded, embedded_yaw FROM MasseTorsoDir
         """)
 
 
