@@ -9,6 +9,7 @@ import make_pose_db as mp
 import make_tags as tag
 import reliability_db as rel
 import torsodir_db as tor
+import spine_dir as spine
 from common.log import apply_logging_option
 
 if __name__ == "__main__":
@@ -40,3 +41,5 @@ if __name__ == "__main__":
     tor.process(database_path, init_db)
     L.info("Processing Tag")
     tag.process(database_path, init_db, arg.tags, arg.auto_tag)
+    L.info("Processing SpineDir")
+    spine.process(database_path, init_db)
