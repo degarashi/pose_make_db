@@ -9,7 +9,7 @@ from common.serialize import vec_serialize
 from common.types import TableDef
 from common.vec_db import VecDb
 from desc.thigh_dir import Table_Def, init_table_query
-from torsodir_db import add_optional_arguments_to_parser
+from common.db_readwrite import add_optional_arguments_to_parser
 
 
 class ThighDirDB(VecDb):
