@@ -3,7 +3,6 @@
 import argparse
 import logging as L
 from contextlib import suppress
-from enum import Enum
 from pathlib import Path
 from typing import Optional
 
@@ -11,19 +10,13 @@ import numpy as np
 
 from common.argparse_aux import str_to_bool
 from common.constants import BLAZEPOSE_LANDMARK_LEN
+from common.constants import BlazePoseLandmark as BPL
 from common.default_path import DEFAULT_DB_PATH
 from common.log import add_logging_args, apply_logging_option
 from common.serialize import vec_deserialize, vec_serialize
-from desc.torsodir import Table_Def, init_table_query
 from common.types import TableDef
 from common.vec_db import VecDb
-
-
-class LmIndex(Enum):
-    LEFT_SHOULDER = 11
-    RIGHT_SHOULDER = 12
-    LEFT_HIP = 23
-    RIGHT_HIP = 24
+from desc.torsodir import Table_Def, init_table_query
 
 
 class MasseTorsoDB(VecDb):
@@ -123,15 +116,15 @@ class MasseTorsoDB(VecDb):
             # -- log end ---
 
             lmLS, lmRS, lmLH, lmRH = (
-                landmark[LmIndex.LEFT_SHOULDER.value],
-                landmark[LmIndex.RIGHT_SHOULDER.value],
-                landmark[LmIndex.LEFT_HIP.value],
-                landmark[LmIndex.RIGHT_HIP.value],
+                landmark[BPL.left_shoulder.value],
+                landmark[BPL.right_shoulder.value],
+                landmark[BPL.left_hip.value],
+                landmark[BPL.right_hip.value],
             )
-            assert lmLS["landmarkIndex"] == LmIndex.LEFT_SHOULDER.value
-            assert lmRS["landmarkIndex"] == LmIndex.RIGHT_SHOULDER.value
-            assert lmLH["landmarkIndex"] == LmIndex.LEFT_HIP.value
-            assert lmRH["landmarkIndex"] == LmIndex.RIGHT_HIP.value
+            assert lmLS["landmarkIndex"] == BPL.left_shoulder.value
+            assert lmRS["landmarkIndex"] == BPL.right_shoulder.value
+            assert lmLH["landmarkIndex"] == BPL.left_hip.value
+            assert lmRH["landmarkIndex"] == BPL.right_hip.value
 
             posLS, posRS, posLH, posRH = (
                 np.array([lmLS["x"], lmLS["y"], lmLS["z"]]),
@@ -286,9 +279,7 @@ def process(database_path: Path, init_db: bool) -> None:
 if __name__ == "__main__":
 
     def init_parser() -> argparse.ArgumentParser:
-        parser = argparse.ArgumentParser(
-            description="Calculate body-direction"
-        )
+        parser = argparse.ArgumentParser(description="Calculate body-direction")
         add_optional_arguments_to_parser(parser)
         return parser
 
