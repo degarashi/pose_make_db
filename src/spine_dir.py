@@ -1,6 +1,8 @@
 import argparse
 from pathlib import Path
 
+from contextlib import closing
+
 from common.constants import BlazePoseLandmark as BPL
 from common.log import apply_logging_option
 from common.serialize import vec_serialize
@@ -23,77 +25,75 @@ class SpineDirDB(VecDb):
         return Table_Def
 
     def calculate(self):
-        cur = self.conn.cursor()
+        with closing(self.cursor()) as cur:
+            # PoseId列挙
+            cur.execute("SELECT id FROM Pose")
+            pose_ids = [row[0] for row in cur.fetchall()]
 
-        # PoseId列挙
-        cur.execute("SELECT id FROM Pose")
-        pose_ids = [row[0] for row in cur.fetchall()]
+            for pose_id in pose_ids:
+                # 必要なランドマークを取り出す
+                cur.execute(
+                    """
+                    SELECT landmarkIndex, x, y, z
+                    FROM Landmark
+                    WHERE poseId = ?
+                      AND landmarkIndex IN (?, ?, ?, ?)
+                    """,
+                    (
+                        pose_id,
+                        BPL.left_hip.value,
+                        BPL.right_hip.value,
+                        BPL.left_shoulder.value,
+                        BPL.right_shoulder.value,
+                    ),
+                )
+                rows = cur.fetchall()
+                if len(rows) != 4:
+                    continue  # データ不足ならskip
 
-        for pose_id in pose_ids:
-            # 必要なランドマークを取り出す
-            cur.execute(
-                """
-                SELECT landmarkIndex, x, y, z
-                FROM Landmark
-                WHERE poseId = ?
-                  AND landmarkIndex IN (?, ?, ?, ?)
-                """,
-                (
-                    pose_id,
-                    BPL.left_hip.value,
-                    BPL.right_hip.value,
-                    BPL.left_shoulder.value,
-                    BPL.right_shoulder.value,
-                ),
-            )
-            rows = cur.fetchall()
-            if len(rows) != 4:
-                continue  # データ不足ならskip
+                lm = {idx: (x, y, z) for idx, x, y, z in rows}
 
-            lm = {idx: (x, y, z) for idx, x, y, z in rows}
+                # 腰と肩の中心
+                hip_center = (
+                    (lm[BPL.left_hip.value][0] + lm[BPL.right_hip.value][0]) / 2,
+                    (lm[BPL.left_hip.value][1] + lm[BPL.right_hip.value][1]) / 2,
+                    (lm[BPL.left_hip.value][2] + lm[BPL.right_hip.value][2]) / 2,
+                )
+                shoulder_center = (
+                    (lm[BPL.left_shoulder.value][0] + lm[BPL.right_shoulder.value][0]) / 2,
+                    (lm[BPL.left_shoulder.value][1] + lm[BPL.right_shoulder.value][1]) / 2,
+                    (lm[BPL.left_shoulder.value][2] + lm[BPL.right_shoulder.value][2]) / 2,
+                )
 
-            # 腰と肩の中心
-            hip_center = (
-                (lm[BPL.left_hip.value][0] + lm[BPL.right_hip.value][0]) / 2,
-                (lm[BPL.left_hip.value][1] + lm[BPL.right_hip.value][1]) / 2,
-                (lm[BPL.left_hip.value][2] + lm[BPL.right_hip.value][2]) / 2,
-            )
-            shoulder_center = (
-                (lm[BPL.left_shoulder.value][0] + lm[BPL.right_shoulder.value][0]) / 2,
-                (lm[BPL.left_shoulder.value][1] + lm[BPL.right_shoulder.value][1]) / 2,
-                (lm[BPL.left_shoulder.value][2] + lm[BPL.right_shoulder.value][2]) / 2,
-            )
+                # ベクトル計算
+                dx = shoulder_center[0] - hip_center[0]
+                dy = shoulder_center[1] - hip_center[1]
+                dz = shoulder_center[2] - hip_center[2]
+                norm = (dx * dx + dy * dy + dz * dz) ** 0.5
+                if norm == 0:
+                    continue
+                dx /= norm
+                dy /= norm
+                dz /= norm
 
-            # ベクトル計算
-            dx = shoulder_center[0] - hip_center[0]
-            dy = shoulder_center[1] - hip_center[1]
-            dz = shoulder_center[2] - hip_center[2]
-            norm = (dx * dx + dy * dy + dz * dz) ** 0.5
-            if norm == 0:
-                continue
-            dx /= norm
-            dy /= norm
-            dz /= norm
+                # MasseSpineDirへ保存（UPSERT）
+                cur.execute(
+                    """
+                    INSERT INTO MasseSpineDir(poseId, x, y, z)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(poseId) DO UPDATE SET x=excluded.x, y=excluded.y, z=excluded.z
+                    """,
+                    (pose_id, dx, dy, dz),
+                )
 
-            # MasseSpineDirへ保存（UPSERT）
-            cur.execute(
-                """
-                INSERT INTO MasseSpineDir(poseId, x, y, z)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT(poseId) DO UPDATE SET x=excluded.x, y=excluded.y, z=excluded.z
-                """,
-                (pose_id, dx, dy, dz),
-            )
-
-            # MasseSpineVecへ保存（vec0 用）
-            # 既存のposeIdがあれば削除
-            cur.execute("DELETE FROM MasseSpineVec WHERE poseId = ?", (pose_id,))
-            # 新規INSERT
-            cur.execute(
-                "INSERT INTO MasseSpineVec(poseId, dir) VALUES (?, ?)",
-                (pose_id, vec_serialize([dx, dy, dz])),
-            )
-        self.conn.commit()
+                # MasseSpineVecへ保存（vec0 用）
+                # 既存のposeIdがあれば削除
+                cur.execute("DELETE FROM MasseSpineVec WHERE poseId = ?", (pose_id,))
+                # 新規INSERT
+                cur.execute(
+                    "INSERT INTO MasseSpineVec(poseId, dir) VALUES (?, ?)",
+                    (pose_id, vec_serialize([dx, dy, dz])),
+                )
 
 
 def process(database_path: Path, init_db: bool) -> None:
