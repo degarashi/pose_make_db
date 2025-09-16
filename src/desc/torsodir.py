@@ -8,7 +8,7 @@ from common.types import TableDef
 def init_table_query() -> str:
     return """
         CREATE TABLE MasseTorsoDir (
-            poseId      INTEGER NOT NULL UNIQUE REFERENCES Pose(id),
+            poseId      INTEGER PRIMARY KEY REFERENCES Pose(id),
             x           REAL NOT NULL,
             y           REAL NOT NULL,
             z           REAL NOT NULL,
