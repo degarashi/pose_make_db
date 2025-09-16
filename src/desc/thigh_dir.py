@@ -13,7 +13,8 @@ def init_table_query() -> str:
             x           REAL NOT NULL,
             y           REAL NOT NULL,
             z           REAL NOT NULL,
-            PRIMARY KEY(poseId, is_right)
+            PRIMARY KEY(poseId, is_right),
+            CHECK((x*x + y*y + z*z) BETWEEN 0.995 AND 1.005)            -- should be unit vector
         );
         CREATE VIRTUAL TABLE MasseThighVec USING vec0(
             poseId      INTEGER NOT NULL UNIQUE,
