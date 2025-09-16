@@ -10,6 +10,7 @@ import torsodir_db as tor
 import spine_dir as spine
 import thigh_dir as thigh
 import thigh_flexion as th_flex
+import crus_dir
 from common.log import apply_logging_option
 
 
@@ -70,6 +71,7 @@ def build_modules() -> List[ModuleTask]:
         ModuleTask("SpineDir", spine, lambda a: (a.database_path, a.init_db)),
         ModuleTask("ThighDir", thigh, lambda a: (a.database_path, a.init_db)),
         ModuleTask("ThighFlex", th_flex, lambda a: (a.database_path, a.init_db)),
+        ModuleTask("CrusDir", crus_dir, lambda a: (a.database_path, a.init_db)),
     ]
 
 
