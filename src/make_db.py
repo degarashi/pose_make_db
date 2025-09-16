@@ -25,6 +25,7 @@ if __name__ == "__main__":
         rel.add_optional_arguments_to_parser(parser)
         tor.add_optional_arguments_to_parser(parser)
         tag.add_optional_arguments_to_parser(parser)
+        spine.add_optional_arguments_to_parser(parser)
         return parser
 
     arg = init_parser().parse_args()
