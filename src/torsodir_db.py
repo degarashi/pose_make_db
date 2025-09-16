@@ -2,17 +2,15 @@
 
 import argparse
 import logging as L
-from contextlib import suppress
 from pathlib import Path
 from typing import Optional
 
 import numpy as np
 
-from common.argparse_aux import str_to_bool
 from common.constants import BLAZEPOSE_LANDMARK_LEN
 from common.constants import BlazePoseLandmark as BPL
-from common.default_path import DEFAULT_DB_PATH
-from common.log import add_logging_args, apply_logging_option
+from common.db_readwrite import add_optional_arguments_to_parser
+from common.log import apply_logging_option
 from common.serialize import vec_deserialize, vec_serialize
 from common.types import TableDef
 from common.vec_db import VecDb
@@ -249,23 +247,6 @@ class MasseTorsoDB(VecDb):
             INSERT INTO MasseTorsoVec(poseId, dir)
             SELECT poseId, embedded FROM MasseTorsoDir
         """)
-
-
-def add_optional_arguments_to_parser(parser: argparse.ArgumentParser) -> None:
-    # データベースファイル
-    with suppress(argparse.ArgumentError):
-        parser.add_argument(
-            "--database_path",
-            type=Path,
-            default=DEFAULT_DB_PATH,
-            help="SQLite3 database file",
-        )
-    # データベースを初期化するか
-    with suppress(argparse.ArgumentError):
-        parser.add_argument(
-            "--init_db", type=str_to_bool, default=False, help="Initialize DB"
-        )
-    add_logging_args(parser)
 
 
 def process(database_path: Path, init_db: bool) -> None:
