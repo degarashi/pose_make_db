@@ -5,14 +5,13 @@ from pathlib import Path
 
 from common.constants import BlazePoseLandmark as BPL
 from common.log import apply_logging_option
-from common.serialize import vec_serialize
 from common.types import TableDef
-from common.vec_db import VecDb
+from common.vec_db import Db
 from desc.thigh_dir import Table_Def, init_table_query
 from common.db_readwrite import add_optional_arguments_to_parser
 
 
-class ThighDirDB(VecDb):
+class ThighDirDB(Db):
     def __init__(self, dbpath: str, clear_table: bool):
         super().__init__(dbpath, clear_table, row_name=True)
 
@@ -78,18 +77,6 @@ class ThighDirDB(VecDb):
                         SET x=excluded.x, y=excluded.y, z=excluded.z
                     """,
                         (pose_id, is_right, vx, vy, vz),
-                    )
-
-                    # MasseThighVec に保存
-                    cur.execute(
-                        "DELETE FROM MasseThighVec WHERE poseId = ?", (pose_id,)
-                    )
-                    cur.execute(
-                        """
-                        INSERT INTO MasseThighVec (poseId, is_right, dir)
-                        VALUES (?, ?, ?)
-                        """,
-                        (pose_id, is_right, vec_serialize([vx, vy, vz])),
                     )
 
 
