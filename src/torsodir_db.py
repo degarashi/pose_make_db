@@ -81,6 +81,7 @@ class MasseTorsoDB(VecDb):
         cur = self.cursor()
         curL = self.cursor()
         dir_data: list[tuple[int, float, float, float, str, float, bytes]] = []
+        dir_vec_data: list[tuple[int, bytes, bytes]] = []
         cur.execute("SELECT id FROM Pose")
         while True:
             ent = cur.fetchone()
@@ -240,13 +241,21 @@ class MasseTorsoDB(VecDb):
                         dir_v_np[2],  # x,y,z
                         used_method,  # method
                         half_min,  # score (とりあえずhalf_minをそのまま入力)
-                        vec_serialize(dir_v_np.tolist()),  # embedded
                         yaw_vec[0],  # yaw_x
                         yaw_vec[1],  # yaw_z
-                        vec_serialize(yaw_vec),  # embedded_yaw
                         pitch_norm,  # pitch
                     )
                 )
+                dir_vec_data.append(
+                    (
+                        pose_id,
+                        vec_serialize(dir_v_np.tolist()),
+                        vec_serialize(yaw_vec),
+                    )
+                )
+
+        assert len(dir_data) == len(dir_vec_data)
+
         # 既に存在するposeIdを削除
         curL.execute(
             """
@@ -262,13 +271,17 @@ class MasseTorsoDB(VecDb):
         )
         # テーブルに書きこむ
         curL.executemany(
-            "INSERT INTO MasseTorsoDir VALUES(?,?,?,?,?,?,?,?,?,?,?)", dir_data
+            "INSERT INTO MasseTorsoDir VALUES(?,?,?,?,?,?,?,?,?)", dir_data
         )
+
         # KNNサーチ用テーブルの書き込み
-        curL.execute("""
+        curL.executemany(
+            """
             INSERT INTO MasseTorsoVec(poseId, dir, yaw)
-            SELECT poseId, embedded, embedded_yaw FROM MasseTorsoDir
-        """)
+           VALUES(?,?,?)
+        """,
+            dir_vec_data,
+        )
 
 
 def process(database_path: Path, init_db: bool) -> None:
