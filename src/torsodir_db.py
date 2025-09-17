@@ -80,8 +80,10 @@ class MasseTorsoDB(VecDb):
     def calc_torsodir(self) -> None:
         cur = self.cursor()
         curL = self.cursor()
-        dir_data: list[tuple[int, float, float, float, str, float, bytes]] = []
-        dir_vec_data: list[tuple[int, bytes, bytes]] = []
+        dir_data: list[
+            tuple[int, float, float, float, str, float, float, float, float]
+        ] = []
+        dir_vec_data: list[tuple[int, bytes, bytes, bytes]] = []
         cur.execute("SELECT id FROM Pose")
         while True:
             ent = cur.fetchone()
@@ -251,6 +253,7 @@ class MasseTorsoDB(VecDb):
                         pose_id,
                         vec_serialize(dir_v_np.tolist()),
                         vec_serialize(yaw_vec),
+                        vec_serialize([pitch_norm]),
                     )
                 )
 
@@ -277,8 +280,8 @@ class MasseTorsoDB(VecDb):
         # KNNサーチ用テーブルの書き込み
         curL.executemany(
             """
-            INSERT INTO MasseTorsoVec(poseId, dir, yaw)
-           VALUES(?,?,?)
+            INSERT INTO MasseTorsoVec(poseId, dir, yaw, pitch)
+           VALUES(?,?,?,?)
         """,
             dir_vec_data,
         )
