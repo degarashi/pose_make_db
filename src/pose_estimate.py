@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Any, List, Tuple
+from typing import Any, List
+import os
 
 import mediapipe as mp
 
@@ -17,10 +18,11 @@ class Landmark:
 
     visibility: float
     presence: float
-    pos: Tuple[float, float, float]
+    pos: tuple[float, float, float]
+    pos_2d: tuple[float, float]
 
 
-class EstimateFailed(BaseException):
+class EstimateFailed(Exception):
     pass
 
 
@@ -34,10 +36,10 @@ class Estimate:
     poseLandmarker: Any
     options: Any
 
-    def __init__(self, model_path: str):
+    def __init__(self, model_path: str, num_poses: int = 1):
         """
         Pose Landmarkerの初期化
-        指定されたモデルファイルを使用し、画像モードで一度に1つのポーズを検出するように設定
+        指定されたモデルファイルを使用し、画像モードで一度に指定数のポーズを検出するように設定
         """
         baseOptions = mp.tasks.BaseOptions
         self.poseLandmarker = mp.tasks.vision.PoseLandmarker
@@ -46,25 +48,24 @@ class Estimate:
         self.options: mp.tasks.vision.PoseLandmarkerOptions = poseLandmarkerOptions(
             base_options=baseOptions(model_asset_path=model_path),
             running_mode=visionRunningMode.IMAGE,
-            num_poses=1,
-        )  # とりあえず1人分の解析しかしない
+            num_poses=num_poses,
+        )
 
     def __enter__(self) -> "Estimate":
         """
         コンテキストマネージャーのエントリポイント
         Pose Landmarkerインスタンスを作成し返す
         """
-        self.landmarker = self.poseLandmarker.create_from_options(
-            self.options
-        ).__enter__()
+        self.landmarker = self.poseLandmarker.create_from_options(self.options)
         return self
 
-    def __exit__(self, e_type, _, __) -> None:
+    def __exit__(self, e_type, e_val, e_tb) -> None:
         """
         コンテキストマネージャーの終了ポイント
         Pose Landmarkerのリソースを解放
         """
-        self.landmarker.__exit__(e_type, _, __)
+        if hasattr(self.landmarker, "close"):
+            self.landmarker.close()
 
     def estimate(self, img_path: str) -> List[Landmark]:
         """
@@ -78,31 +79,55 @@ class Estimate:
 
         Raises:
             EstimateFailed: 姿勢推定が失敗した場合
-            (例: ランドマークがBLAZEPOSE_LANDMARK_LEN個未満しか検出されなかった場合)
         """
-        # 画像ファイルの読み込み
-        mp_image = mp.Image.create_from_file(img_path)
-        # 解析実行
-        pose_landmarker_result: mp.tasks.vision.PoseLandmarkerResult = (
-            self.landmarker.detect(mp_image)
-        )
+        # ファイル存在確認と例外処理追加
+        if not os.path.isfile(img_path):
+            raise EstimateFailed(f"画像ファイルが存在しません: {img_path}")
 
-        # visibility フレーム内に存在し他のオブジェクトで遮蔽されていないキーポイントのprobability
-        # presence フレーム内に存在するキーポイントのprobability
+        try:
+            mp_image = mp.Image.create_from_file(img_path)
+        except Exception as e:
+            raise EstimateFailed(f"画像読み込みに失敗しました: {e}")
+
+        # 解析実行と結果検証
+        try:
+            pose_landmarker_result: mp.tasks.vision.PoseLandmarkerResult = (
+                self.landmarker.detect(mp_image)
+            )
+        except Exception as e:
+            raise EstimateFailed(f"姿勢推定の実行に失敗しました: {e}")
+
+        if (
+            not pose_landmarker_result.pose_world_landmarks
+            or not pose_landmarker_result.pose_landmarks
+        ):
+            raise EstimateFailed("ランドマークが検出されませんでした")
 
         marksList: List[Landmark] = []
-        # とりあえず姿勢の解析は考えず、全部の座標を格納
-        # pose_world_landmarks は検出されたポーズごとにランドマークのリストを持つ
-        # ここでは num_poses=1 なので最初のポーズのランドマークのみを処理する
-        for marks in pose_landmarker_result.pose_world_landmarks:
-            for lm in marks:
-                marksList.append(
-                    Landmark(lm.visibility, lm.presence, (lm.x, lm.y, lm.z))
-                )
-            break  # 最初のポーズのみを処理するため、ループを抜ける
 
-        # mediapipeのランドマークポイント個数のチェック
-        # 検出された数がそれに満たない場合はエラーとする
+        try:
+            marks = pose_landmarker_result.pose_world_landmarks[0]
+            marks_2d = pose_landmarker_result.pose_landmarks[0]
+        except IndexError:
+            raise EstimateFailed("ポーズデータが不足しています")
+
+        if len(marks) != len(marks_2d):
+            raise EstimateFailed("3Dと2Dのランドマーク数が一致しません")
+
+        for lm_idx, lm in enumerate(marks):
+            pos_2d = marks_2d[lm_idx]
+            marksList.append(
+                Landmark(
+                    lm.visibility,
+                    lm.presence,
+                    (lm.x, lm.y, lm.z),
+                    (pos_2d.x, pos_2d.y),
+                )
+            )
+
         if len(marksList) < BLAZEPOSE_LANDMARK_LEN:
-            raise EstimateFailed()
+            raise EstimateFailed(
+                f"ランドマーク数が不足しています: {len(marksList)}/{BLAZEPOSE_LANDMARK_LEN}"
+            )
+
         return marksList

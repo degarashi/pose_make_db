@@ -125,7 +125,6 @@ class PoseDB(Db):
             lms: list[tuple[int, int, float, float, float, float, float]] = []
             mark_index: int = 0
             for m in marks:
-                pos = m.pos
                 # Y軸は反転
                 lms.append(
                     (
@@ -133,13 +132,16 @@ class PoseDB(Db):
                         mark_index,
                         m.presence,
                         m.visibility,
-                        pos[0],
-                        -pos[1],
-                        pos[2],
+                        m.pos[0],
+                        -m.pos[1],
+                        m.pos[2],
+                        # 2Dランドマーク座標を追加
+                        m.pos_2d[0],  # 2d_x
+                        m.pos_2d[1],  # 2d_y
                     )
                 )
                 mark_index += 1
-            cur.executemany("INSERT INTO Landmark VALUES (?,?,?,?,?,?,?)", lms)
+            cur.executemany("INSERT INTO Landmark VALUES (?,?,?,?,?,?,?,?,?)", lms)
 
             L.debug("Success")
 
