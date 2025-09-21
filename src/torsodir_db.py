@@ -174,7 +174,7 @@ class MasseTorsoDB(VecDb):
                     if psLH and psRH:
                         if psLS:
                             used_method = "3pt: (LS, Both(Hip))"
-                            dir_v = np.cross(posLS - posLH, posRH - posLH)
+                            dir_v = -np.cross(posLS - posLH, posRH - posLH)
                         elif psRS:
                             used_method = "3pt: (RS, Both(Hip))"
                             dir_v = np.cross(posRS - posRH, posLH - posRH)
