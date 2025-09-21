@@ -148,7 +148,7 @@ class MasseTorsoDB(VecDb):
             def four_points() -> Optional[np.ndarray]:
                 nonlocal used_method
                 if psLS and psRS and psLH and psRH:
-                    used_method = "4pt"
+                    used_method = "4pt: Both(Hip, Shoulder)"
                     dir_vA = np.cross(posLH - posLS, posRS - posLS)
                     dir_vA /= np.linalg.norm(dir_vA)
                     dir_vB = np.cross(posLS - posRS, posRH - posRS)
@@ -163,20 +163,20 @@ class MasseTorsoDB(VecDb):
                 # 両方の肩と片方のヒップ
                 if psLS and psRS:
                     if psLH:
-                        used_method = "3pt: A"
+                        used_method = "3pt: (Both(Shoulder), LH))"
                         dir_v = np.cross(posLH - posLS, posRS - posLS)
                     elif psRH:
-                        used_method = "3pt: B"
+                        used_method = "3pt: (Both(Shoulder), RH)"
                         dir_v = np.cross(posLS - posRS, posRH - posRS)
 
                 if dir_v is None:
                     # 両方のヒップと片方の肩
                     if psLH and psRH:
                         if psLS:
-                            used_method = "3pt: C"
+                            used_method = "3pt: (LS, Both(Hip))"
                             dir_v = np.cross(posLS - posLH, posRH - posLH)
                         elif psRS:
-                            used_method = "3pt: D"
+                            used_method = "3pt: (RS, Both(Hip))"
                             dir_v = np.cross(posRS - posRH, posLH - posRH)
 
                 if dir_v is not None:
@@ -192,11 +192,11 @@ class MasseTorsoDB(VecDb):
                 if psLS and psRH:
                     base_z = np.array([0, 0, 1] if posLS[0] < posRH[0] else [0, 0, -1])
                     shoulder_to_hip = posRH - posLS
-                    used_method = "2pt: A"
+                    used_method = "2pt: (LS, RH)"
                 elif psLH and psRS:
                     base_z = np.array([0, 0, 1] if posLH[0] < posRS[0] else [0, 0, -1])
                     shoulder_to_hip = posLH - posRS
-                    used_method = "2pt: B"
+                    used_method = "2pt: (LH, RS)"
 
                 if base_z is not None and shoulder_to_hip is not None:
                     dir_v = np.cross(shoulder_to_hip, base_z)
