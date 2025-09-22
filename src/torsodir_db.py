@@ -101,7 +101,9 @@ class MasseTorsoDB(VecDb):
                 (pose_id,),
             )
             landmark: list = curL.fetchall()
-            assert len(landmark) == BLAZEPOSE_LANDMARK_LEN
+            assert (
+                len(landmark) == BLAZEPOSE_LANDMARK_LEN
+            ), f"Expected {BLAZEPOSE_LANDMARK_LEN} landmarks, but got {len(landmark)} for pose_id={pose_id}"
             L.debug(f"pose_id={pose_id}")
 
             # -- log ---
@@ -211,7 +213,9 @@ class MasseTorsoDB(VecDb):
                     dir_v_np = two_points()
 
             if dir_v_np is not None:
-                assert len(dir_v_np) == 3, "dir_v_np must be a numpy array of length 3"
+                assert (
+                    len(dir_v_np) == 3
+                ), f"dir_v_np must be a numpy array of length 3, but got {len(dir_v_np)}"
                 # 姿勢検出の時の確かさの度合いを取得
                 curL.execute(
                     "SELECT torsoHalfMin FROM Reliability WHERE poseId=?", (pose_id,)
@@ -224,6 +228,8 @@ class MasseTorsoDB(VecDb):
                 if norm_xz > 0:
                     yaw_vec = (xz / norm_xz).tolist()
                 else:
+                    # norm_xzが0の場合のyaw_vecの初期化が不十分であることへの対応として
+                    # yaw_vecをゼロベクトルで初期化する。
                     yaw_vec = [0.0, 0.0]
 
                 # pitch: XZ 平面に対する上下角
@@ -257,7 +263,10 @@ class MasseTorsoDB(VecDb):
                     )
                 )
 
-        assert len(dir_data) == len(dir_vec_data)
+        # dir_dataとdir_vec_dataのエントリ数が一致しない場合の例外処理の欠如への対応としてアサーション
+        assert (
+            len(dir_data) == len(dir_vec_data)
+        ), f"Length mismatch between dir_data ({len(dir_data)}) and dir_vec_data ({len(dir_vec_data)})"
 
         # 既に存在するposeIdを削除
         curL.execute(
