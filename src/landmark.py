@@ -4,6 +4,9 @@ from dataclasses import dataclass
 Vec3 = tuple[float, float, float]
 Vec2 = tuple[float, float]
 
+# 閾値定数
+DEFAULT_CONFIDENCE_THRESHOLD: float = 0.5
+
 
 @dataclass(frozen=True)
 class Landmark:
@@ -40,7 +43,7 @@ class Landmark:
                 f"presence must be between 0.0 and 1.0, got {self.presence}"
             )
 
-    def is_confident(self, threshold: float = 0.5) -> bool:
+    def is_confident(self, threshold: float = DEFAULT_CONFIDENCE_THRESHOLD) -> bool:
         """
         visibility と presence が閾値以上かを判定。
 
