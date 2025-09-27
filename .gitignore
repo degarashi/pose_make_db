@@ -12,3 +12,6 @@ wheels/
 
 # venv
 .venv
+
+# for neovide(WSL2)
+nul
