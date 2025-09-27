@@ -6,6 +6,7 @@ from typing import Any
 import mediapipe as mp
 
 from common.constants import BLAZEPOSE_LANDMARK_LEN
+from landmark import Landmark
 
 
 class EstimateFailed(Exception):
