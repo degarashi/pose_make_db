@@ -1,1 +1,0 @@
-start "pose_make_db" .venv\Scripts\activate

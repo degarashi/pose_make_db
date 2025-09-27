@@ -15,3 +15,7 @@ wheels/
 
 # for neovide(WSL2)
 nul
+
+# for activate environment
+activate_env.bat
+open_nvim.bat
