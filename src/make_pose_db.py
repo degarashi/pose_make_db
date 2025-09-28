@@ -133,8 +133,10 @@ class PoseDB(Db):
             L.debug(f"poseId={pose_id}")
 
             # ランドマーク情報をテーブルに格納
-            # (poseId, landmarkIndex, presence, visibility, x, y, z)
-            lms: list[tuple[int, int, float, float, float, float, float]] = []
+            # (poseId, landmarkIndex, presence, visibility, x, y, z, 2d_x, 2d_y)
+            lms: list[
+                tuple[int, int, float, float, float, float, float, float, float]
+            ] = []
             mark_index: int = 0
             for m in marks:
                 # Y軸は反転
@@ -237,7 +239,7 @@ def process(
             ):
                 param = futures[future]
 
-                # _load_imageの実行結果を取得（例外が発生した場合もここで捕捉される）
+                # _estimate_procの実行結果を取得（例外が発生した場合もここで捕捉される）
                 try:
                     marks: list[Landmark] = future.result()
                     db.write_landmarks(param[1], marks)
