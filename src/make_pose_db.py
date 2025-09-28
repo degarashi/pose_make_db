@@ -4,9 +4,9 @@ import os
 import re
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from contextlib import closing, suppress
+from dataclasses import dataclass
 from hashlib import sha512
 from pathlib import Path
-from dataclasses import dataclass
 
 from tqdm import tqdm
 
@@ -14,8 +14,9 @@ from common import default_path, log
 from common.argparse_aux import str_to_bool
 from common.constants import BlazePoseLandmark
 from common.db import Db
-from desc.posedb import Table_Def, init_table_query
+from common.rect import Rect2D
 from common.types import TableDef
+from desc.posedb import Table_Def, init_table_query
 from pose_estimate import Estimate, EstimateFailed, Landmark
 
 # MediaPipe Pose Landmarkerのモデルファイルパス
@@ -144,8 +145,8 @@ class PoseDB(Db):
     def write_landmarks(
         self, file_id: int, person_id: int, marks: list[Landmark]
     ) -> None:
-        # PersonIdを作成
         with closing(self.cursor()) as cur:
+            # PoseIdを作成
             cur.execute(
                 "INSERT INTO Pose(fileId, personIndex) VALUES (?,?)",
                 (file_id, person_id),
@@ -189,6 +190,27 @@ class PoseDB(Db):
                     )
                     for lm in lms
                 ],
+            )
+
+            # Landmarkのpos_2d群から最大、最小を求め矩形を算出。一定のマージンを持たせる
+            xs = [m.pos_2d[0] for m in marks]
+            ys = [m.pos_2d[1] for m in marks]
+            min_x = min(xs)
+            max_x = max(xs)
+            min_y = min(ys)
+            max_y = max(ys)
+
+            bbox = Rect2D(
+                min_x,
+                min_y,
+                max_x,
+                max_y,
+            )
+            bbox = bbox.add_margin_ratio(0.05, 0.05).clip_0_1()
+            L.debug(f"bbox={bbox}")
+            cur.execute(
+                "INSERT INTO PoseRect VALUES(?,?,?,?,?)",
+                (pose_id, bbox.x_min, bbox.x_max, bbox.y_min, bbox.y_max),
             )
 
             L.debug("Success")
