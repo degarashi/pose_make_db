@@ -35,6 +35,18 @@ def init_table_query() -> str:
             CHECK(personIndex >= 0),
             UNIQUE(fileId, personIndex)
         );
+        -- 全身のバウンディングボックス(0.0 -> 1.0)
+        CREATE TABLE PoseRect (
+            poseId          INTEGER PRIMARY KEY,
+            x0              REAL NOT NULL,
+            x1              REAL NOT NULL,
+            y0              REAL NOT NULL,
+            y1              REAL NOT NULL,
+            CHECK (x0 <= x1),
+            CHECK (y0 <= y1),
+            CHECK (x0 >= 0.0 AND x1 <= 1.0),
+            CHECK (y0 >= 0.0 AND y1 <= 1.0)
+        );
         -- ランドマークIdと名 (For Debug)
         CREATE TABLE LandmarkName (
             id              INTEGER PRIMARY KEY,
@@ -89,5 +101,12 @@ Table_Def: TableDef = {
     "LandmarkName": {
         "id": int,
         "name": str
+    },
+    "PoseRect": {
+        "poseId": int,
+        "x0": float,
+        "x1": float,
+        "y0": float,
+        "y1": float
     }
 }
