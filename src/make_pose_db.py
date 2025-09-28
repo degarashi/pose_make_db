@@ -28,6 +28,19 @@ class ImageTask:
     image_id: int
 
 
+@dataclass
+class LandmarkData:
+    pose_id: int
+    landmark_index: int
+    presence: float
+    visibility: float
+    x: float
+    y: float
+    z: float
+    x_2d: float
+    y_2d: float
+
+
 class PoseDB(Db):
     def __init__(self, dbpath: str, clear_table: bool, row_name: bool = False):
         super().__init__(dbpath, clear_table, row_name)
@@ -142,29 +155,41 @@ class PoseDB(Db):
             L.debug(f"poseId={pose_id}")
 
             # ランドマーク情報をテーブルに格納
-            # (poseId, landmarkIndex, presence, visibility, x, y, z, 2d_x, 2d_y)
-            lms: list[
-                tuple[int, int, float, float, float, float, float, float, float]
-            ] = []
+            lms: list[LandmarkData] = []
             mark_index: int = 0
             for m in marks:
                 # Y軸は反転
                 lms.append(
-                    (
-                        pose_id,
-                        mark_index,
-                        m.presence,
-                        m.visibility,
-                        m.pos[0],
-                        -m.pos[1],
-                        m.pos[2],
-                        # 2Dランドマーク座標を追加
-                        m.pos_2d[0],  # 2d_x
-                        m.pos_2d[1],  # 2d_y
+                    LandmarkData(
+                        pose_id=pose_id,
+                        landmark_index=mark_index,
+                        presence=m.presence,
+                        visibility=m.visibility,
+                        x=m.pos[0],
+                        y=-m.pos[1],  # Y軸は反転
+                        z=m.pos[2],
+                        x_2d=m.pos_2d[0],  # 2d_x
+                        y_2d=m.pos_2d[1],  # 2d_y
                     )
                 )
                 mark_index += 1
-            cur.executemany("INSERT INTO Landmark VALUES (?,?,?,?,?,?,?,?,?)", lms)
+            cur.executemany(
+                "INSERT INTO Landmark VALUES (?,?,?,?,?,?,?,?,?)",
+                [
+                    (
+                        lm.pose_id,
+                        lm.landmark_index,
+                        lm.presence,
+                        lm.visibility,
+                        lm.x,
+                        lm.y,
+                        lm.z,
+                        lm.x_2d,
+                        lm.y_2d,
+                    )
+                    for lm in lms
+                ],
+            )
 
             L.debug("Success")
 
