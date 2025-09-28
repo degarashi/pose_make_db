@@ -164,7 +164,7 @@ class PoseDB(Db):
 # 姿勢推定
 def _estimate_proc(path: str, model_path: str) -> list[list[Landmark]]:
     L.debug("Estimating pose...")
-    with Estimate(model_path) as e:
+    with Estimate(model_path, 3) as e:
         return e.estimate(path)
 
 
