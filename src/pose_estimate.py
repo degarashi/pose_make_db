@@ -54,15 +54,16 @@ class Estimate:
         if hasattr(self.landmarker, "close"):
             self.landmarker.close()
 
-    def estimate(self, img_path: str) -> list[Landmark]:
+    def estimate(self, img_path: str) -> list[list[Landmark]]:
         """
-        指定された画像ファイルパスから姿勢推定を実行し、ランドマークのリストを返す
+        指定された画像ファイルパスから姿勢推定を実行し、複数体のランドマークリストを返す
 
         Args:
             img_path: 姿勢推定を行う画像ファイルのパス
 
         Returns:
-            推定されたランドマーク(Landmark)のリスト
+            推定されたランドマーク(Landmark)のリストのリスト
+            （各人物ごとにランドマークのリストを持つ）
 
         Raises:
             EstimateFailed: 姿勢推定が失敗した場合
@@ -90,31 +91,35 @@ class Estimate:
         ):
             raise EstimateFailed("ランドマークが検出されませんでした")
 
-        marksList: list[Landmark] = []
+        all_marks: list[list[Landmark]] = []
 
-        try:
-            marks = pose_landmarker_result.pose_world_landmarks[0]
-            marks_2d = pose_landmarker_result.pose_landmarks[0]
-        except IndexError:
-            raise EstimateFailed("ポーズデータが不足しています")
+        # 複数体のポーズに対応
+        for idx, marks in enumerate(pose_landmarker_result.pose_world_landmarks):
+            try:
+                marks_2d = pose_landmarker_result.pose_landmarks[idx]
+            except IndexError:
+                raise EstimateFailed("ポーズデータが不足しています")
 
-        if len(marks) != len(marks_2d):
-            raise EstimateFailed("3Dと2Dのランドマーク数が一致しません")
+            if len(marks) != len(marks_2d):
+                raise EstimateFailed("3Dと2Dのランドマーク数が一致しません")
 
-        for lm_idx, lm in enumerate(marks):
-            pos_2d = marks_2d[lm_idx]
-            marksList.append(
-                Landmark(
-                    lm.visibility,
-                    lm.presence,
-                    (lm.x, lm.y, lm.z),
-                    (pos_2d.x, pos_2d.y),
+            marksList: list[Landmark] = []
+            for lm_idx, lm in enumerate(marks):
+                pos_2d = marks_2d[lm_idx]
+                marksList.append(
+                    Landmark(
+                        lm.visibility,
+                        lm.presence,
+                        (lm.x, lm.y, lm.z),
+                        (pos_2d.x, pos_2d.y),
+                    )
                 )
-            )
 
-        if len(marksList) < BLAZEPOSE_LANDMARK_LEN:
-            raise EstimateFailed(
-                f"ランドマーク数が不足しています: {len(marksList)}/{BLAZEPOSE_LANDMARK_LEN}"
-            )
+            if len(marksList) < BLAZEPOSE_LANDMARK_LEN:
+                raise EstimateFailed(
+                    f"ランドマーク数が不足しています: {len(marksList)}/{BLAZEPOSE_LANDMARK_LEN}"
+                )
 
-        return marksList
+            all_marks.append(marksList)
+
+        return all_marks

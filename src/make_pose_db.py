@@ -121,12 +121,13 @@ class PoseDB(Db):
             # ---- File End ----
             L.debug("done")
 
-    def write_landmarks(self, file_id: int, marks: list[Landmark]) -> None:
+    def write_landmarks(
+        self, file_id: int, person_id: int, marks: list[Landmark]
+    ) -> None:
         # PersonIdを作成
         with closing(self.cursor()) as cur:
-            # Personはとりあえず0固定
             cur.execute(
-                "INSERT INTO Pose(fileId, personIndex) VALUES (?,?)", (file_id, 0)
+                "INSERT INTO Pose(fileId, personIndex) VALUES (?,?)", (file_id, person_id)
             )
             # 新規姿勢推定IDを取得
             pose_id: int = cur.execute("SELECT last_insert_rowid()").fetchone()[0]
@@ -161,7 +162,7 @@ class PoseDB(Db):
 
 
 # 姿勢推定
-def _estimate_proc(path: str, model_path: str) -> list[Landmark]:
+def _estimate_proc(path: str, model_path: str) -> list[list[Landmark]]:
     L.debug("Estimating pose...")
     with Estimate(model_path) as e:
         return e.estimate(path)
@@ -241,8 +242,10 @@ def process(
 
                 # _estimate_procの実行結果を取得（例外が発生した場合もここで捕捉される）
                 try:
-                    marks: list[Landmark] = future.result()
-                    db.write_landmarks(param[1], marks)
+                    marks: list[list[Landmark]] = future.result()
+                    # 複数人物に対応するためループ処理
+                    for index, person_marks in enumerate(marks):
+                        db.write_landmarks(param[1], index, person_marks)
                 except EstimateFailed:
                     L.warning(f"Pose estimation failed for {param[0]}. Skipping.")
                 except Exception as exc:
