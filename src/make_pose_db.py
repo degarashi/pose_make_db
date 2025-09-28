@@ -16,6 +16,7 @@ from common.constants import BlazePoseLandmark
 from common.db import Db
 from common.rect import Rect2D
 from common.types import TableDef
+from common.wsl import is_wsl_environment, posix_to_windows
 from desc.posedb import Table_Def, init_table_query
 from pose_estimate import Estimate, EstimateFailed, Landmark
 
@@ -109,7 +110,14 @@ class PoseDB(Db):
             # テーブルに格納
             cur.execute(
                 "INSERT INTO File(path, size, timestamp, hash) VALUES (?,?,?,?)",
-                (path.as_posix(), stat.st_size, st_mtime, checksum),
+                (
+                    path.as_posix()
+                    if not is_wsl_environment()
+                    else posix_to_windows(str(path)),
+                    stat.st_size,
+                    st_mtime,
+                    checksum,
+                ),
             )
             # 新規登録フラグとファイルIDを返す
             return True, cur.lastrowid
