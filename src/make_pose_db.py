@@ -39,7 +39,13 @@ class PoseDB(Db):
             index = 0
             for n in BlazePoseLandmark:
                 # ランドマーク名をデータベースに挿入(0から始める必要がある為、一行ずつ)
-                cur.execute("INSERT INTO LandmarkName(id, name) VALUES (?,?)", (index, n.name,))
+                cur.execute(
+                    "INSERT INTO LandmarkName(id, name) VALUES (?,?)",
+                    (
+                        index,
+                        n.name,
+                    ),
+                )
                 index += 1
 
     def register_imagefile(self, path: Path) -> tuple[bool, int]:
@@ -49,7 +55,9 @@ class PoseDB(Db):
         st_mtime = int(stat.st_mtime)
         with closing(self.cursor()) as cur:
             # 既に登録した画像は計算を省く
-            cur.execute("SELECT size, timestamp, id FROM File WHERE path=?", (path.as_posix(),))
+            cur.execute(
+                "SELECT size, timestamp, id FROM File WHERE path=?", (path.as_posix(),)
+            )
             ent = cur.fetchone()
             if ent is not None:
                 # ファイルサイズと更新時刻が一致する場合、既に登録済みと判断
@@ -69,7 +77,9 @@ class PoseDB(Db):
             ent = cur.fetchone()
             if ent is not None:
                 # ハッシュ値が一致する場合、ファイルが移動したと判断し、パスを更新
-                cur.execute("UPDATE File SET path=? WHERE hash=?", (path.as_posix(), checksum))
+                cur.execute(
+                    "UPDATE File SET path=? WHERE hash=?", (path.as_posix(), checksum)
+                )
                 L.debug("already registered file(moved file)")
                 return False, ent[0]  # 登録済みフラグとファイルIDを返す
             else:
@@ -115,7 +125,9 @@ class PoseDB(Db):
         # PersonIdを作成
         with closing(self.cursor()) as cur:
             # Personはとりあえず0固定
-            cur.execute("INSERT INTO Pose(fileId, personIndex) VALUES (?,?)", (image_id, 0))
+            cur.execute(
+                "INSERT INTO Pose(fileId, personIndex) VALUES (?,?)", (image_id, 0)
+            )
             # 新規姿勢推定IDを取得
             pose_id: int = cur.execute("SELECT last_insert_rowid()").fetchone()[0]
             L.debug(f"poseId={pose_id}")
@@ -167,8 +179,10 @@ def process(
 
     # init_db が True の場合、既存のデータが削除されるのでここで確認を出し、noと答えたらすぐ終了
     if init_db:
-        confirm = input("データベースを初期化します。既存のデータは削除されます。続行しますか？ (y/N): ")
-        if confirm.lower() != 'y':
+        confirm = input(
+            "データベースを初期化します。既存のデータは削除されます。続行しますか？ (y/N): "
+        )
+        if confirm.lower() != "y":
             L.info("処理を中断しました。")
             return False
 
@@ -209,7 +223,9 @@ def process(
                 # 新たにファイルが登録されてないなら姿勢推定の必要なし (ランドマーク座標は既に登録されている)
                 if b_id_created:
                     futures[
-                        executor.submit(_estimate_proc, path.as_posix(), str(model_path))
+                        executor.submit(
+                            _estimate_proc, path.as_posix(), str(model_path)
+                        )
                     ] = (
                         path,
                         image_id,
