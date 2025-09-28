@@ -6,6 +6,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from contextlib import closing, suppress
 from hashlib import sha512
 from pathlib import Path
+from dataclasses import dataclass
 
 from tqdm import tqdm
 
@@ -19,6 +20,12 @@ from pose_estimate import Estimate, EstimateFailed, Landmark
 
 # MediaPipe Pose Landmarkerのモデルファイルパス
 DEFAULT_MODEL_PATH = default_path.TEST_DATA_PATH / "pose_landmarker_heavy.task"
+
+
+@dataclass
+class ImageTask:
+    path: Path
+    image_id: int
 
 
 class PoseDB(Db):
@@ -127,7 +134,8 @@ class PoseDB(Db):
         # PersonIdを作成
         with closing(self.cursor()) as cur:
             cur.execute(
-                "INSERT INTO Pose(fileId, personIndex) VALUES (?,?)", (file_id, person_id)
+                "INSERT INTO Pose(fileId, personIndex) VALUES (?,?)",
+                (file_id, person_id),
             )
             # 新規姿勢推定IDを取得
             pose_id: int = cur.execute("SELECT last_insert_rowid()").fetchone()[0]
@@ -217,7 +225,7 @@ def process(
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
             # 各ファイルに対して_estimate_proc関数を呼び出すFutureオブジェクトを作成
             # estimateオブジェクトは各プロセスで生成
-            futures: dict[any, tuple[Path, int]] = {}
+            futures: dict[any, ImageTask] = {}
             for path in image_paths:
                 path = path.absolute()
                 # 画像ファイルが既に登録されてるか確認
@@ -229,10 +237,7 @@ def process(
                         executor.submit(
                             _estimate_proc, path.as_posix(), str(model_path)
                         )
-                    ] = (
-                        path,
-                        image_id,
-                    )
+                    ] = ImageTask(path=path, image_id=image_id)
 
             # tqdmで進捗を表示するために、完了したFutureを順番に処理
             for future in tqdm(
@@ -245,12 +250,12 @@ def process(
                     marks: list[list[Landmark]] = future.result()
                     # 複数人物に対応するためループ処理
                     for index, person_marks in enumerate(marks):
-                        db.write_landmarks(param[1], index, person_marks)
+                        db.write_landmarks(param.image_id, index, person_marks)
                 except EstimateFailed:
-                    L.warning(f"Pose estimation failed for {param[0]}. Skipping.")
+                    L.warning(f"Pose estimation failed for {param.path}. Skipping.")
                 except Exception as exc:
                     # その他の予期せぬ例外
-                    L.error(f"{param[0]} generated an exception: {exc}")
+                    L.error(f"{param.path} generated an exception: {exc}")
 
         db.commit()
     return True
