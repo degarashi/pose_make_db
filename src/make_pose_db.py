@@ -121,12 +121,12 @@ class PoseDB(Db):
             # ---- File End ----
             L.debug("done")
 
-    def write_landmarks(self, image_id: int, marks: list[Landmark]) -> None:
+    def write_landmarks(self, file_id: int, marks: list[Landmark]) -> None:
         # PersonIdを作成
         with closing(self.cursor()) as cur:
             # Personはとりあえず0固定
             cur.execute(
-                "INSERT INTO Pose(fileId, personIndex) VALUES (?,?)", (image_id, 0)
+                "INSERT INTO Pose(fileId, personIndex) VALUES (?,?)", (file_id, 0)
             )
             # 新規姿勢推定IDを取得
             pose_id: int = cur.execute("SELECT last_insert_rowid()").fetchone()[0]
