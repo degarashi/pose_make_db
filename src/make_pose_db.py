@@ -214,7 +214,20 @@ class PoseDB(Db):
                 max_x,
                 max_y,
             )
-            bbox = bbox.add_margin_ratio(0.05, 0.05).clip_0_1()
+            # 矩形にマージンを加えるが、頭部は余裕を持たせる
+            RECT_MARGIN = 0.1
+            ADDITIONAL_MARGIN = 0.1
+            # Noseランドマークが最上部にある場合のみ、頭部マージンを余分にとる
+            nose_index = BlazePoseLandmark.nose.value
+            nose_y = marks[nose_index].pos_2d[1]
+            should_margin = nose_y <= min_y + 0.05
+            bbox = bbox.add_margin_sides(
+                RECT_MARGIN,
+                RECT_MARGIN,
+                RECT_MARGIN,
+                RECT_MARGIN + (ADDITIONAL_MARGIN if should_margin else 0.0),
+            ).clip_0_1()
+
             L.debug(f"bbox={bbox}")
             cur.execute(
                 "INSERT INTO PoseRect VALUES(?,?,?,?,?)",
