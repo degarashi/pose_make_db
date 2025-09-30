@@ -73,13 +73,50 @@ class Rect2D:
         @return 新しいRect2Dインスタンス
         @exception ValueError マージンが負の場合の例外
         """
-        if margin_x < 0 or margin_y < 0:
+        return self.add_margin_sides(margin_x, margin_x, margin_y, margin_y)
+
+    def add_margin_sides(
+        self, left: float, right: float, top: float, bottom: float
+    ) -> Rect2D:
+        """
+        @brief 左右上下別々のマージンを加えた矩形生成
+        @param left 左方向のマージン
+        @param right 右方向のマージン
+        @param top 上方向のマージン
+        @param bottom 下方向のマージン
+        @return 新しいRect2Dインスタンス
+        @exception ValueError マージンが負の場合の例外
+        """
+        if left < 0 or right < 0 or top < 0 or bottom < 0:
             raise ValueError("Margins must be non-negative")
         return Rect2D(
-            self.x_min - margin_x,
-            self.y_min - margin_y,
-            self.x_max + margin_x,
-            self.y_max + margin_y,
+            self.x_min - left,
+            self.y_min - bottom,
+            self.x_max + right,
+            self.y_max + top,
+        )
+
+    def add_margin_ratio_sides(
+        self,
+        left_ratio: float,
+        right_ratio: float,
+        top_ratio: float,
+        bottom_ratio: float,
+    ) -> Rect2D:
+        """
+        @brief 左右上下別々のマージン比率を加えた矩形生成
+        @param left_ratio 左方向のマージン比率
+        @param right_ratio 右方向のマージン比率
+        @param top_ratio 上方向のマージン比率
+        @param bottom_ratio 下方向のマージン比率
+        @return 新しいRect2Dインスタンス
+        @exception ValueError マージン比率が負の場合の例外
+        """
+        return self.add_margin_sides(
+            self.width * left_ratio,
+            self.width * right_ratio,
+            self.height * top_ratio,
+            self.height * bottom_ratio,
         )
 
     def add_margin_ratio(self, n: float, m: float) -> Rect2D:
