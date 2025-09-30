@@ -26,14 +26,14 @@ class Rect2D:
         @brief 矩形の有効性チェック
         @return 有効な矩形ならTrue、そうでなければFalse
         """
-        return self.x_min > self.x_max or self.y_min > self.y_max
+        return self.x_min <= self.x_max and self.y_min <= self.y_max
 
     def _validate(self) -> None:
         """
         @brief 矩形座標の妥当性検証
         @exception ValueError 無効な座標が指定された場合の例外
         """
-        if self.is_valid():
+        if not self.is_valid():
             raise ValueError(
                 "Invalid rectangle coordinates: min must be less than or equal to max"
             )
