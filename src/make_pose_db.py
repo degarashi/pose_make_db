@@ -97,10 +97,16 @@ class PoseDB(Db):
             # あるいは、ファイルが移動した場合を考える
             cur.execute("SELECT id FROM File WHERE hash=?", (checksum,))
             ent = cur.fetchone()
+
+            path_to_write = (
+                path.as_posix()
+                if not is_wsl_environment()
+                else posix_to_windows(str(path))
+            )
             if ent is not None:
                 # ハッシュ値が一致する場合、ファイルが移動したと判断し、パスを更新
                 cur.execute(
-                    "UPDATE File SET path=? WHERE hash=?", (path.as_posix(), checksum)
+                    "UPDATE File SET path=? WHERE hash=?", (path_to_write, checksum)
                 )
                 L.debug("already registered file(moved file)")
                 return False, ent[0]  # 登録済みフラグとファイルIDを返す
@@ -111,9 +117,7 @@ class PoseDB(Db):
             cur.execute(
                 "INSERT INTO File(path, size, timestamp, hash) VALUES (?,?,?,?)",
                 (
-                    path.as_posix()
-                    if not is_wsl_environment()
-                    else posix_to_windows(str(path)),
+                    path_to_write,
                     stat.st_size,
                     st_mtime,
                     checksum,
