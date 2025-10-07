@@ -1,4 +1,5 @@
 import argparse
+import logging
 import sys
 from contextlib import closing
 from dataclasses import dataclass
@@ -30,6 +31,7 @@ class VecRow:
 class SpineDirDB(VecDb):
     def __init__(self, dbpath: str, clear_table: bool) -> None:
         super().__init__(dbpath, clear_table, row_name=True)
+        self._logger = logging.getLogger(__name__)
 
     @property
     def init_query(self) -> str:
@@ -69,7 +71,22 @@ class SpineDirDB(VecDb):
                 )
                 rows: list[tuple[int, float, float, float]] = cur.fetchall()
                 if len(rows) != 4:
-                    continue  # データ不足ならskip
+                    # 警告ログを出力
+                    found_indices = {r[0] for r in rows}
+                    expected_indices = {
+                        BPL.left_hip.value,
+                        BPL.right_hip.value,
+                        BPL.left_shoulder.value,
+                        BPL.right_shoulder.value,
+                    }
+                    missing = sorted(expected_indices - found_indices)
+                    self._logger.warning(
+                        "Pose %d: insufficient landmark data (%d/4). Missing indices: %s. Skipped.",
+                        pose_id,
+                        len(rows),
+                        missing,
+                    )
+                    continue
 
                 lm: dict[int, tuple[float, float, float]] = {
                     idx: (x, y, z) for idx, x, y, z in rows
@@ -93,6 +110,11 @@ class SpineDirDB(VecDb):
                 dz = shoulder_center[2] - hip_center[2]
                 norm = (dx * dx + dy * dy + dz * dz) ** 0.5
                 if norm == 0:
+                    # 警告ログを出力
+                    self._logger.warning(
+                        "Pose %d: spine direction vector norm is zero. Skipped.",
+                        pose_id,
+                    )
                     continue
                 dx /= norm
                 dy /= norm
