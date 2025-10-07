@@ -1,19 +1,19 @@
 import argparse
+import sys
+from contextlib import closing
 from pathlib import Path
 
-from contextlib import closing
-
 from common.constants import BlazePoseLandmark as BPL
+from common.db_readwrite import add_optional_arguments_to_parser
 from common.log import apply_logging_option
 from common.serialize import vec_serialize
 from common.types import TableDef
 from common.vec_db import VecDb
 from desc.spinedir import Table_Def, init_table_query
-from common.db_readwrite import add_optional_arguments_to_parser
 
 
 class SpineDirDB(VecDb):
-    def __init__(self, dbpath: str, clear_table: bool):
+    def __init__(self, dbpath: str, clear_table: bool) -> None:
         super().__init__(dbpath, clear_table, row_name=True)
 
     @property
@@ -24,13 +24,18 @@ class SpineDirDB(VecDb):
     def table_def(self) -> TableDef:
         return Table_Def
 
-    def calculate(self):
+    def calculate(self) -> None:
         with closing(self.cursor()) as cur:
             # PoseId列挙
             cur.execute("SELECT id FROM Pose")
-            pose_ids = [row[0] for row in cur.fetchall()]
+            pose_ids: list[int] = [row[0] for row in cur.fetchall()]
+            total = len(pose_ids)
+            print(f"[INFO] {total} poses found. Start calculation...")
 
-            for pose_id in pose_ids:
+            dir_rows: list[tuple[int, float, float, float]] = []
+            vec_rows: list[tuple[int, bytes]] = []
+
+            for idx, pose_id in enumerate(pose_ids, start=1):
                 # 必要なランドマークを取り出す
                 cur.execute(
                     """
@@ -47,19 +52,21 @@ class SpineDirDB(VecDb):
                         BPL.right_shoulder.value,
                     ),
                 )
-                rows = cur.fetchall()
+                rows: list[tuple[int, float, float, float]] = cur.fetchall()
                 if len(rows) != 4:
                     continue  # データ不足ならskip
 
-                lm = {idx: (x, y, z) for idx, x, y, z in rows}
+                lm: dict[int, tuple[float, float, float]] = {
+                    idx: (x, y, z) for idx, x, y, z in rows
+                }
 
                 # 腰と肩の中心
-                hip_center = (
+                hip_center: tuple[float, float, float] = (
                     (lm[BPL.left_hip.value][0] + lm[BPL.right_hip.value][0]) / 2,
                     (lm[BPL.left_hip.value][1] + lm[BPL.right_hip.value][1]) / 2,
                     (lm[BPL.left_hip.value][2] + lm[BPL.right_hip.value][2]) / 2,
                 )
-                shoulder_center = (
+                shoulder_center: tuple[float, float, float] = (
                     (lm[BPL.left_shoulder.value][0] + lm[BPL.right_shoulder.value][0]) / 2,
                     (lm[BPL.left_shoulder.value][1] + lm[BPL.right_shoulder.value][1]) / 2,
                     (lm[BPL.left_shoulder.value][2] + lm[BPL.right_shoulder.value][2]) / 2,
@@ -76,24 +83,41 @@ class SpineDirDB(VecDb):
                 dy /= norm
                 dz /= norm
 
-                # MasseSpineDirへ保存（UPSERT）
-                cur.execute(
-                    """
-                    INSERT INTO MasseSpineDir(poseId, x, y, z)
-                    VALUES (?, ?, ?, ?)
-                    ON CONFLICT(poseId) DO UPDATE SET x=excluded.x, y=excluded.y, z=excluded.z
-                    """,
-                    (pose_id, dx, dy, dz),
-                )
+                # バッチ用に追加
+                dir_rows.append((pose_id, dx, dy, dz))
+                vec_rows.append((pose_id, vec_serialize([dx, dy, dz])))
 
-                # MasseSpineVecへ保存（vec0 用）
-                # 既存のposeIdがあれば削除
-                cur.execute("DELETE FROM MasseSpineVec WHERE poseId = ?", (pose_id,))
-                # 新規INSERT
-                cur.execute(
-                    "INSERT INTO MasseSpineVec(poseId, dir) VALUES (?, ?)",
-                    (pose_id, vec_serialize([dx, dy, dz])),
-                )
+                # 進捗表示
+                if idx % 50 == 0 or idx == total:
+                    percent = (idx / total) * 100
+                    print(
+                        f"[PROGRESS] {idx}/{total} ({percent:.1f}%) processed",
+                        file=sys.stderr,
+                    )
+
+            # MasseSpineDirへ保存（UPSERT）
+            cur.executemany(
+                """
+                INSERT INTO MasseSpineDir(poseId, x, y, z)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(poseId) DO UPDATE SET x=excluded.x, y=excluded.y, z=excluded.z
+                """,
+                dir_rows,
+            )
+
+            # MasseSpineVecへ保存（vec0 用）
+            # 既存のposeIdがあれば削除
+            cur.executemany(
+                "DELETE FROM MasseSpineVec WHERE poseId = ?",
+                [(pid,) for pid, *_ in dir_rows],
+            )
+            # 新規INSERT
+            cur.executemany(
+                "INSERT INTO MasseSpineVec(poseId, dir) VALUES (?, ?)",
+                vec_rows,
+            )
+
+            print(f"[INFO] Calculation finished. {len(dir_rows)} entries updated.")
 
 
 def process(database_path: Path, init_db: bool) -> None:
