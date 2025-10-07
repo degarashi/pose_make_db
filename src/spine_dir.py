@@ -1,6 +1,7 @@
 import argparse
 import sys
 from contextlib import closing
+from dataclasses import dataclass
 from pathlib import Path
 
 from common.constants import BlazePoseLandmark as BPL
@@ -10,6 +11,20 @@ from common.serialize import vec_serialize
 from common.types import TableDef
 from common.vec_db import VecDb
 from desc.spinedir import Table_Def, init_table_query
+
+
+@dataclass
+class DirRow:
+    pose_id: int
+    x: float
+    y: float
+    z: float
+
+
+@dataclass
+class VecRow:
+    pose_id: int
+    dir_bytes: bytes
 
 
 class SpineDirDB(VecDb):
@@ -32,8 +47,8 @@ class SpineDirDB(VecDb):
             total = len(pose_ids)
             print(f"[INFO] {total} poses found. Start calculation...")
 
-            dir_rows: list[tuple[int, float, float, float]] = []
-            vec_rows: list[tuple[int, bytes]] = []
+            dir_rows: list[DirRow] = []
+            vec_rows: list[VecRow] = []
 
             for idx, pose_id in enumerate(pose_ids, start=1):
                 # 必要なランドマークを取り出す
@@ -84,8 +99,8 @@ class SpineDirDB(VecDb):
                 dz /= norm
 
                 # バッチ用に追加
-                dir_rows.append((pose_id, dx, dy, dz))
-                vec_rows.append((pose_id, vec_serialize([dx, dy, dz])))
+                dir_rows.append(DirRow(pose_id, dx, dy, dz))
+                vec_rows.append(VecRow(pose_id, vec_serialize([dx, dy, dz])))
 
                 # 進捗表示
                 if idx % 50 == 0 or idx == total:
@@ -102,19 +117,19 @@ class SpineDirDB(VecDb):
                 VALUES (?, ?, ?, ?)
                 ON CONFLICT(poseId) DO UPDATE SET x=excluded.x, y=excluded.y, z=excluded.z
                 """,
-                dir_rows,
+                [(r.pose_id, r.x, r.y, r.z) for r in dir_rows],
             )
 
             # MasseSpineVecへ保存（vec0 用）
             # 既存のposeIdがあれば削除
             cur.executemany(
                 "DELETE FROM MasseSpineVec WHERE poseId = ?",
-                [(pid,) for pid, *_ in dir_rows],
+                [(r.pose_id,) for r in dir_rows],
             )
             # 新規INSERT
             cur.executemany(
                 "INSERT INTO MasseSpineVec(poseId, dir) VALUES (?, ?)",
-                vec_rows,
+                [(r.pose_id, r.dir_bytes) for r in vec_rows],
             )
 
             print(f"[INFO] Calculation finished. {len(dir_rows)} entries updated.")
