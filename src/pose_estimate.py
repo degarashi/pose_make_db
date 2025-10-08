@@ -4,6 +4,8 @@ import os
 from typing import Any
 
 import mediapipe as mp
+import numpy as np
+from PIL import Image, ImageOps
 
 from common.constants import BLAZEPOSE_LANDMARK_LEN
 from landmark import Landmark
@@ -54,6 +56,28 @@ class Estimate:
         if hasattr(self.landmarker, "close"):
             self.landmarker.close()
 
+    @staticmethod
+    def _load_image_with_exif(img_path: str) -> mp.Image:
+        """
+        画像のEXIFの回転情報を適用したうえでmp.Imageを生成
+        """
+        try:
+            with Image.open(img_path) as img:
+                # EXIFの回転を適用（EXIFがない場合はそのまま）
+                img = ImageOps.exif_transpose(img)
+                # MediaPipeはRGBを期待
+                img = img.convert("RGB")
+                np_img = np.asarray(img)
+        except Exception as e:
+            raise EstimateFailed(f"画像読み込みに失敗しました: {e}")
+
+        try:
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=np_img)
+        except Exception as e:
+            raise EstimateFailed(f"画像の変換に失敗しました: {e}")
+
+        return mp_image
+
     def estimate(self, img_path: str) -> list[list[Landmark]]:
         """
         指定された画像ファイルパスから姿勢推定を実行し、複数体のランドマークリストを返す
@@ -72,10 +96,8 @@ class Estimate:
         if not os.path.isfile(img_path):
             raise EstimateFailed(f"画像ファイルが存在しません: {img_path}")
 
-        try:
-            mp_image = mp.Image.create_from_file(img_path)
-        except Exception as e:
-            raise EstimateFailed(f"画像読み込みに失敗しました: {e}")
+        # EXIFの回転を適用してmp.Imageを生成
+        mp_image = self._load_image_with_exif(img_path)
 
         # 解析実行と結果検証
         try:
