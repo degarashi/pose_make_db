@@ -41,9 +41,41 @@ class BlazePoseLandmark(Enum):
     left_foot_index = auto()
     right_foot_index = auto()
 
+
 assert BlazePoseLandmark.nose.value == 0
 
 BLAZEPOSE_LANDMARK_LEN = 33
 assert (
     len(BlazePoseLandmark) == BLAZEPOSE_LANDMARK_LEN
 )  # Enumのメンバー数が一致することを確認
+
+
+class CocoLandmark(Enum):
+    """COCO（person keypoints）のランドマークを表すEnum"""
+
+    def _generate_next_value_(name, start, count, last_values):
+        return count  # 0,1,2,...となる
+
+    nose = auto()
+    left_eye = auto()
+    right_eye = auto()
+    left_ear = auto()
+    right_ear = auto()
+    left_shoulder = auto()
+    right_shoulder = auto()
+    left_elbow = auto()
+    right_elbow = auto()
+    left_wrist = auto()
+    right_wrist = auto()
+    left_hip = auto()
+    right_hip = auto()
+    left_knee = auto()
+    right_knee = auto()
+    left_ankle = auto()
+    right_ankle = auto()
+
+
+assert CocoLandmark.nose.value == 0
+
+COCO_LANDMARK_LEN = 17
+assert len(CocoLandmark) == COCO_LANDMARK_LEN  # Enumのメンバー数が一致することを確認
