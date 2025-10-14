@@ -18,7 +18,7 @@ from common.rect import Rect2D
 from common.types import TableDef
 from common.wsl import is_wsl_environment, posix_to_windows
 from desc.posedb import Table_Def, init_table_query
-from pose_estimate import Estimate, EstimateFailed, Landmark
+from pose_estimate_blazepose import Estimate, EstimateFailed, Landmark
 
 # MediaPipe Pose Landmarkerのモデルファイルパス
 DEFAULT_MODEL_PATH = default_path.TEST_DATA_PATH / "pose_landmarker_heavy.task"
