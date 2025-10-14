@@ -79,3 +79,42 @@ assert CocoLandmark.nose.value == 0
 
 COCO_LANDMARK_LEN = 17
 assert len(CocoLandmark) == COCO_LANDMARK_LEN  # Enumのメンバー数が一致することを確認
+
+
+# BlazePose → COCO の変換辞書
+BLAZEPOSE_TO_COCO = {
+    BlazePoseLandmark.nose: CocoLandmark.nose,
+    BlazePoseLandmark.left_eye: CocoLandmark.left_eye,
+    BlazePoseLandmark.right_eye: CocoLandmark.right_eye,
+    BlazePoseLandmark.left_ear: CocoLandmark.left_ear,
+    BlazePoseLandmark.right_ear: CocoLandmark.right_ear,
+    BlazePoseLandmark.left_shoulder: CocoLandmark.left_shoulder,
+    BlazePoseLandmark.right_shoulder: CocoLandmark.right_shoulder,
+    BlazePoseLandmark.left_elbow: CocoLandmark.left_elbow,
+    BlazePoseLandmark.right_elbow: CocoLandmark.right_elbow,
+    BlazePoseLandmark.left_wrist: CocoLandmark.left_wrist,
+    BlazePoseLandmark.right_wrist: CocoLandmark.right_wrist,
+    BlazePoseLandmark.left_hip: CocoLandmark.left_hip,
+    BlazePoseLandmark.right_hip: CocoLandmark.right_hip,
+    BlazePoseLandmark.left_knee: CocoLandmark.left_knee,
+    BlazePoseLandmark.right_knee: CocoLandmark.right_knee,
+    BlazePoseLandmark.left_ankle: CocoLandmark.left_ankle,
+    BlazePoseLandmark.right_ankle: CocoLandmark.right_ankle,
+}
+
+# COCO → BlazePose の変換辞書
+COCO_TO_BLAZEPOSE = {v: k for k, v in BLAZEPOSE_TO_COCO.items()}
+
+
+# BlazePose → COCO
+def blazepose_to_coco(landmark: BlazePoseLandmark) -> CocoLandmark:
+    if landmark not in BLAZEPOSE_TO_COCO:
+        raise ValueError(f"対応するCOCOランドマークが存在しません: {landmark}")
+    return BLAZEPOSE_TO_COCO[landmark]
+
+
+# COCO → BlazePose
+def coco_to_blazepose(landmark: CocoLandmark) -> BlazePoseLandmark:
+    if landmark not in COCO_TO_BLAZEPOSE:
+        raise ValueError(f"対応するBlazePoseランドマークが存在しません: {landmark}")
+    return COCO_TO_BLAZEPOSE[landmark]
