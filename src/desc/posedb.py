@@ -21,10 +21,10 @@ def init_table_query() -> str:
             path        TEXT NOT NULL UNIQUE,
             size        INTEGER NOT NULL,
             timestamp   INTEGER NOT NULL,           -- UnixTime
-            hash        BLOB NOT NULL UNIQUE,       -- SHA2(512)
+            hash        BLOB NOT NULL UNIQUE,       -- SHA-512(64 bytes)
             CHECK(size > 0),
             CHECK(timestamp >= 0),
-            CHECK(LENGTH(hash) == 64)               -- SHA2(512)
+            CHECK(LENGTH(hash) == 64)               -- SHA-512(64 bytes)
         );
 
         -- PoseId = どのファイルの何人目か
