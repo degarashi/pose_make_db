@@ -2,7 +2,7 @@ import argparse
 from contextlib import closing
 from pathlib import Path
 
-from common.constants import BlazePoseLandmark as BPL
+from common.constants import CocoLandmark as CLm
 from common.db_readwrite import add_optional_arguments_to_parser, calc_landmark_dir
 from common.log import apply_logging_option
 from common.types import TableDef
@@ -27,8 +27,8 @@ class CrusDirDB(Db):
             calc_landmark_dir(
                 cur,
                 [
-                    (BPL.left_knee.value, BPL.left_ankle.value),
-                    (BPL.right_knee.value, BPL.right_ankle.value),
+                    (CLm.left_knee.value, CLm.left_ankle.value),
+                    (CLm.right_knee.value, CLm.right_ankle.value),
                 ],
                 "MasseCrusDir",
             )

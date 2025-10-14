@@ -56,8 +56,7 @@ def init_table_query() -> str:
         CREATE TABLE Landmark (
             poseId          INTEGER NOT NULL REFERENCES Pose(id),
             landmarkIndex   INTEGER NOT NULL REFERENCES LandmarkName(id),
-            presence        REAL NOT NULL,
-            visibility      REAL NOT NULL,
+            confidence      REAL NOT NULL,
 
             -- 3D Landmark --
             x               REAL NOT NULL,
@@ -67,8 +66,7 @@ def init_table_query() -> str:
             td_x            REAL NOT NULL,
             td_y            REAL NOT NULL,
 
-            CHECK (presence BETWEEN 0 AND 1),
-            CHECK (visibility BETWEEN 0 AND 1),
+            CHECK (confidence BETWEEN 0 AND 1),
             PRIMARY KEY(poseId, landmarkIndex)
         );
     """
@@ -90,8 +88,7 @@ Table_Def: TableDef = {
     "Landmark": {
         "poseId": int,
         "landmarkIndex": int,
-        "presence": float,
-        "visibility": float,
+        "confidence": float,
         "x": float,
         "y": float,
         "z": float,

@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from common import default_path, log
 from common.argparse_aux import str_to_bool
-from common.constants import BlazePoseLandmark
+from common.constants import BLAZEPOSE_TO_COCO, CocoLandmark
 from common.db import Db
 from common.rect import Rect2D
 from common.types import TableDef
@@ -34,8 +34,7 @@ class ImageTask:
 class LandmarkData:
     pose_id: int
     landmark_index: int
-    presence: float
-    visibility: float
+    confidence: float
     x: float
     y: float
     z: float
@@ -56,11 +55,10 @@ class PoseDB(Db):
         return Table_Def
 
     def post_table_initialized(self) -> None:
-        # ランドマーク名のリストを作成し、データベースに挿入する
+        # ランドマーク名のリストを作成し、データベースに挿入する（COCO準拠）
         with closing(self.cursor()) as cur:
             index = 0
-            for n in BlazePoseLandmark:
-                # ランドマーク名をデータベースに挿入(0から始める必要がある為、一行ずつ)
+            for n in CocoLandmark:
                 cur.execute(
                     "INSERT INTO LandmarkName(id, name) VALUES (?,?)",
                     (
@@ -157,6 +155,9 @@ class PoseDB(Db):
     def write_landmarks(
         self, file_id: int, person_id: int, marks: list[Landmark]
     ) -> None:
+        """
+        marksはBlazePoseの33点を想定。COCOの17点へ射影して保存する。
+        """
         with closing(self.cursor()) as cur:
             # PoseIdを作成
             cur.execute(
@@ -167,17 +168,15 @@ class PoseDB(Db):
             pose_id: int = cur.execute("SELECT last_insert_rowid()").fetchone()[0]
             L.debug(f"poseId={pose_id}")
 
-            # ランドマーク情報をテーブルに格納
+            # COCOランドマークを抽出してテーブルに格納
             lms: list[LandmarkData] = []
-            mark_index: int = 0
-            for m in marks:
-                # Y軸は反転
+            for blaze_idx, coco_idx in BLAZEPOSE_TO_COCO.items():
+                m = marks[blaze_idx.value]
                 lms.append(
                     LandmarkData(
                         pose_id=pose_id,
-                        landmark_index=mark_index,
-                        presence=m.presence,
-                        visibility=m.visibility,
+                        landmark_index=coco_idx.value,
+                        confidence=m.visibility,
                         x=m.pos[0],
                         y=-m.pos[1],  # Y軸は反転
                         z=m.pos[2],
@@ -185,15 +184,13 @@ class PoseDB(Db):
                         y_2d=m.pos_2d[1],  # 2d_y
                     )
                 )
-                mark_index += 1
             cur.executemany(
-                "INSERT INTO Landmark VALUES (?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO Landmark VALUES (?,?,?,?,?,?,?,?)",
                 [
                     (
                         lm.pose_id,
                         lm.landmark_index,
-                        lm.presence,
-                        lm.visibility,
+                        lm.confidence,
                         lm.x,
                         lm.y,
                         lm.z,
@@ -204,9 +201,9 @@ class PoseDB(Db):
                 ],
             )
 
-            # Landmarkのpos_2d群から最大、最小を求め矩形を算出。一定のマージンを持たせる
-            xs = [m.pos_2d[0] for m in marks]
-            ys = [m.pos_2d[1] for m in marks]
+            # bboxはCOCOの2Dランドマークから算出
+            xs = [lm.x_2d for lm in lms]
+            ys = [lm.y_2d for lm in lms]
             min_x = min(xs)
             max_x = max(xs)
             min_y = min(ys)
@@ -221,9 +218,9 @@ class PoseDB(Db):
             # 矩形にマージンを加えるが、頭部は余裕を持たせる
             RECT_MARGIN = 0.1
             ADDITIONAL_MARGIN = 0.1
-            # Noseランドマークが最上部にある場合のみ、頭部マージンを余分にとる
-            nose_index = BlazePoseLandmark.nose.value
-            nose_y = marks[nose_index].pos_2d[1]
+            # COCOのnoseはインデックス0
+            nose_index = CocoLandmark.nose.value
+            nose_y = lms[nose_index].y_2d
             should_margin = nose_y <= min_y + 0.05
             bbox = bbox.add_margin_sides(
                 RECT_MARGIN,
@@ -303,7 +300,7 @@ def process(
                 # 画像ファイルが既に登録されてるか確認
                 (b_id_created, image_id) = db.register_imagefile(path)
                 L.debug(f"fileId={image_id}")
-                # 新たにファイルが登録されてないなら姿勢推定の必要なし (ランドマーク座標は既に登録されている)
+                # 新規登録された場合のみ推定を実行
                 if b_id_created:
                     futures[
                         executor.submit(
@@ -311,13 +308,13 @@ def process(
                         )
                     ] = ImageTask(path=path, image_id=image_id)
 
-            # tqdmで進捗を表示するために、完了したFutureを順番に処理
+            # tqdmで進捗を表示しつつFutureを処理
             for future in tqdm(
                 as_completed(futures), total=len(futures), desc="Processing images"
             ):
                 param = futures[future]
 
-                # _estimate_procの実行結果を取得（例外が発生した場合もここで捕捉される）
+                # _estimate_procの実行結果を取得
                 try:
                     marks: list[list[Landmark]] = future.result()
                     # 複数人物に対応するためループ処理
@@ -375,7 +372,7 @@ if __name__ == "__main__":
 
     def init_parser() -> argparse.ArgumentParser:
         parser = argparse.ArgumentParser(
-            description="Extract joints position by using BlazePose"
+            description="Extract joints position by using BlazePose (stored as COCO)"
         )
         # 処理対象の画像ディレクトリ
         parser.add_argument("target_dir", type=Path, help="Images directory")

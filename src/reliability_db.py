@@ -1,6 +1,7 @@
 import argparse
 from pathlib import Path
 
+from common.constants import CocoLandmark
 from common.db import Db
 from common.db_readwrite import add_optional_arguments_to_parser
 from common.log import apply_logging_option
@@ -29,10 +30,10 @@ class ReliabilityDB(Db):
     def calculate_reliability(self):
         """
         PoseId毎に(Face, Half)のReliabilityを算出
-        信頼性=(presence値の二乗)の平均
+        信頼性=(confidence値の二乗)の平均
         """
         base_query = """
-             SELECT Pose.id, AVG(lm.presence*lm.presence) FROM Pose
+             SELECT Pose.id, AVG(lm.confidence*lm.confidence) FROM Pose
              JOIN Landmark AS lm ON lm.poseId = Pose.id
              WHERE {}
              GROUP BY Pose.id
@@ -40,14 +41,36 @@ class ReliabilityDB(Db):
         """
 
         cursor = self.cursor()
-        # 顔の信頼性を計算 (landmarkIndex <= 10)
-        cursor.execute(base_query.format("landmarkIndex <= 10"))
+        # 顔の信頼性を計算
+        cursor.execute(
+            base_query.format(
+                "landmarkIndex <= {}".format(CocoLandmark.right_ear.value)
+            )
+        )
         face_reliability_data: list[tuple[int, float]] = cursor.fetchall()
-        # 左半身の信頼性を計算 (landmarkIndex: 肩、肘、大腿、膝)
-        cursor.execute(base_query.format("landmarkIndex IN (11, 13, 23, 25)"))
+        # 左半身の信頼性を計算
+        cursor.execute(
+            base_query.format(
+                "landmarkIndex IN ({}, {}, {}, {})".format(
+                    CocoLandmark.left_shoulder.value,
+                    CocoLandmark.left_elbow.value,
+                    CocoLandmark.left_knee.value,
+                    CocoLandmark.left_ankle.value,
+                )
+            )
+        )
         left_half_reliability_data: list[tuple[int, float]] = cursor.fetchall()
-        # 右半身の信頼性を計算 (landmarkIndex: 肩、肘、大腿、膝)
-        cursor.execute(base_query.format("landmarkIndex IN (12, 14, 24, 26)"))
+        # 右半身の信頼性を計算
+        cursor.execute(
+            base_query.format(
+                "landmarkIndex IN ({}, {}, {}, {})".format(
+                    CocoLandmark.right_shoulder.value,
+                    CocoLandmark.right_elbow.value,
+                    CocoLandmark.right_knee.value,
+                    CocoLandmark.right_ankle.value,
+                )
+            )
+        )
         right_half_reliability_data: list[tuple[int, float]] = cursor.fetchall()
 
         # 集約関数を使っているので、各リストの長さはポーズの数と一致するはず

@@ -5,7 +5,7 @@ from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
 
-from common.constants import BlazePoseLandmark as BPL
+from common.constants import CocoLandmark as CLm
 from common.db_readwrite import add_optional_arguments_to_parser
 from common.log import apply_logging_option
 from common.serialize import vec_serialize
@@ -63,10 +63,10 @@ class SpineDirDB(VecDb):
                     """,
                     (
                         pose_id,
-                        BPL.left_hip.value,
-                        BPL.right_hip.value,
-                        BPL.left_shoulder.value,
-                        BPL.right_shoulder.value,
+                        CLm.left_hip.value,
+                        CLm.right_hip.value,
+                        CLm.left_shoulder.value,
+                        CLm.right_shoulder.value,
                     ),
                 )
                 rows: list[tuple[int, float, float, float]] = cur.fetchall()
@@ -74,10 +74,10 @@ class SpineDirDB(VecDb):
                     # 警告ログを出力
                     found_indices = {r[0] for r in rows}
                     expected_indices = {
-                        BPL.left_hip.value,
-                        BPL.right_hip.value,
-                        BPL.left_shoulder.value,
-                        BPL.right_shoulder.value,
+                        CLm.left_hip.value,
+                        CLm.right_hip.value,
+                        CLm.left_shoulder.value,
+                        CLm.right_shoulder.value,
                     }
                     missing = sorted(expected_indices - found_indices)
                     self._logger.warning(
@@ -94,14 +94,14 @@ class SpineDirDB(VecDb):
 
                 # 腰と肩の中心
                 hip_center: tuple[float, float, float] = (
-                    (lm[BPL.left_hip.value][0] + lm[BPL.right_hip.value][0]) / 2,
-                    (lm[BPL.left_hip.value][1] + lm[BPL.right_hip.value][1]) / 2,
-                    (lm[BPL.left_hip.value][2] + lm[BPL.right_hip.value][2]) / 2,
+                    (lm[CLm.left_hip.value][0] + lm[CLm.right_hip.value][0]) / 2,
+                    (lm[CLm.left_hip.value][1] + lm[CLm.right_hip.value][1]) / 2,
+                    (lm[CLm.left_hip.value][2] + lm[CLm.right_hip.value][2]) / 2,
                 )
                 shoulder_center: tuple[float, float, float] = (
-                    (lm[BPL.left_shoulder.value][0] + lm[BPL.right_shoulder.value][0]) / 2,
-                    (lm[BPL.left_shoulder.value][1] + lm[BPL.right_shoulder.value][1]) / 2,
-                    (lm[BPL.left_shoulder.value][2] + lm[BPL.right_shoulder.value][2]) / 2,
+                    (lm[CLm.left_shoulder.value][0] + lm[CLm.right_shoulder.value][0]) / 2,
+                    (lm[CLm.left_shoulder.value][1] + lm[CLm.right_shoulder.value][1]) / 2,
+                    (lm[CLm.left_shoulder.value][2] + lm[CLm.right_shoulder.value][2]) / 2,
                 )
 
                 # ベクトル計算

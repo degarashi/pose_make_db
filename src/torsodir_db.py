@@ -7,8 +7,8 @@ from typing import Optional
 
 import numpy as np
 
-from common.constants import BLAZEPOSE_LANDMARK_LEN
-from common.constants import BlazePoseLandmark as BPL
+from common.constants import COCO_LANDMARK_LEN
+from common.constants import CocoLandmark as CLm
 from common.db_readwrite import add_optional_arguments_to_parser
 from common.log import apply_logging_option
 from common.serialize import vec_deserialize, vec_serialize
@@ -102,8 +102,8 @@ class MasseTorsoDB(VecDb):
             )
             landmark: list = curL.fetchall()
             assert (
-                len(landmark) == BLAZEPOSE_LANDMARK_LEN
-            ), f"Expected {BLAZEPOSE_LANDMARK_LEN} landmarks, but got {len(landmark)} for pose_id={pose_id}"
+                len(landmark) == COCO_LANDMARK_LEN
+            ), f"Expected {COCO_LANDMARK_LEN} landmarks, but got {len(landmark)} for pose_id={pose_id}"
             L.debug(f"pose_id={pose_id}")
 
             # -- log ---
@@ -119,15 +119,15 @@ class MasseTorsoDB(VecDb):
             # -- log end ---
 
             lmLS, lmRS, lmLH, lmRH = (
-                landmark[BPL.left_shoulder.value],
-                landmark[BPL.right_shoulder.value],
-                landmark[BPL.left_hip.value],
-                landmark[BPL.right_hip.value],
+                landmark[CLm.left_shoulder.value],
+                landmark[CLm.right_shoulder.value],
+                landmark[CLm.left_hip.value],
+                landmark[CLm.right_hip.value],
             )
-            assert lmLS["landmarkIndex"] == BPL.left_shoulder.value
-            assert lmRS["landmarkIndex"] == BPL.right_shoulder.value
-            assert lmLH["landmarkIndex"] == BPL.left_hip.value
-            assert lmRH["landmarkIndex"] == BPL.right_hip.value
+            assert lmLS["landmarkIndex"] == CLm.left_shoulder.value
+            assert lmRS["landmarkIndex"] == CLm.right_shoulder.value
+            assert lmLH["landmarkIndex"] == CLm.left_hip.value
+            assert lmRH["landmarkIndex"] == CLm.right_hip.value
 
             posLS, posRS, posLH, posRH = (
                 np.array([lmLS["x"], lmLS["y"], lmLS["z"]]),
@@ -137,10 +137,10 @@ class MasseTorsoDB(VecDb):
             )
             TH_PRESENCE = 0.9
             psLS, psRS, psLH, psRH = (
-                lmLS["presence"] >= TH_PRESENCE,
-                lmRS["presence"] >= TH_PRESENCE,
-                lmLH["presence"] >= TH_PRESENCE,
-                lmRH["presence"] >= TH_PRESENCE,
+                lmLS["confidence"] >= TH_PRESENCE,
+                lmRS["confidence"] >= TH_PRESENCE,
+                lmLH["confidence"] >= TH_PRESENCE,
+                lmRH["confidence"] >= TH_PRESENCE,
             )
 
             used_method: str = "invalid"
