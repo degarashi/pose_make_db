@@ -19,19 +19,19 @@ def init_table_query() -> str:
          CREATE TABLE File (
             id          INTEGER PRIMARY KEY,
             path        TEXT NOT NULL UNIQUE,
-            size		INTEGER NOT NULL,
-            timestamp	INTEGER NOT NULL,		    -- UnixTime
-            hash		BLOB NOT NULL UNIQUE,		-- SHA2(512)
+            size        INTEGER NOT NULL,
+            timestamp   INTEGER NOT NULL,           -- UnixTime
+            hash        BLOB NOT NULL UNIQUE,       -- SHA2(512)
             CHECK(size > 0),
             CHECK(timestamp >= 0),
-            CHECK(LENGTH(hash) == 64)			    -- SHA2(512)
+            CHECK(LENGTH(hash) == 64)               -- SHA2(512)
         );
 
         -- PoseId = どのファイルの何人目か
         CREATE TABLE Pose (
-            id		        INTEGER PRIMARY KEY,
-            fileId		    INTEGER NOT NULL REFERENCES File(id),
-            personIndex	    INTEGER NOT NULL,
+            id              INTEGER PRIMARY KEY,
+            fileId          INTEGER NOT NULL REFERENCES File(id),
+            personIndex     INTEGER NOT NULL,
             CHECK(personIndex >= 0),
             UNIQUE(fileId, personIndex)
         );
@@ -54,15 +54,15 @@ def init_table_query() -> str:
         );
         -- Poseに対する各ランドマーク座標
         CREATE TABLE Landmark (
-            poseId		    INTEGER NOT NULL REFERENCES Pose(id),
-            landmarkIndex	INTEGER NOT NULL REFERENCES LandmarkName(id),
+            poseId          INTEGER NOT NULL REFERENCES Pose(id),
+            landmarkIndex   INTEGER NOT NULL REFERENCES LandmarkName(id),
             presence        REAL NOT NULL,
-            visibility	    REAL NOT NULL,
+            visibility      REAL NOT NULL,
 
             -- 3D Landmark --
-            x		        REAL NOT NULL,
-            y		        REAL NOT NULL,
-            z		        REAL NOT NULL,
+            x               REAL NOT NULL,
+            y               REAL NOT NULL,
+            z               REAL NOT NULL,
             -- 2D Landmark --
             td_x            REAL NOT NULL,
             td_y            REAL NOT NULL,
