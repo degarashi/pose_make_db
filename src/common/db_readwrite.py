@@ -26,14 +26,14 @@ def add_optional_arguments_to_parser(parser: argparse.ArgumentParser) -> None:
 
 
 def calc_landmark_dir(
-    cur, input_name: tuple[tuple[int, int], tuple[int, int]], result_table: str
+    cur, input_index: tuple[tuple[int, int], tuple[int, int]], result_table: str
 ) -> None:
     # PoseId列挙
     cur.execute("SELECT id FROM Pose")
     pose_ids = [row[0] for row in cur.fetchall()]
 
     for pose_id in pose_ids:
-        for is_right, (APos_idx, BPos_idx) in enumerate(input_name):
+        for is_right, (APos_idx, BPos_idx) in enumerate(input_index):
             # APos, BPos の座標を取得
             cur.execute(
                 """
