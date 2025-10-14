@@ -8,7 +8,7 @@ import numpy as np
 from PIL import Image, ImageOps
 
 from common.constants import BLAZEPOSE_LANDMARK_LEN
-from landmark import Landmark
+from landmark_blazepose import Landmark
 
 
 class EstimateFailed(Exception):
