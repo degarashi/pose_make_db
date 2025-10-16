@@ -24,6 +24,40 @@ from pose_estimate_blazepose import Estimate, EstimateFailed, Landmark
 DEFAULT_MODEL_PATH = default_path.TEST_DATA_PATH / "pose_landmarker_heavy.task"
 
 
+class Hasher:
+    # 部分ハッシュで使うブロックサイズ（128KB）
+    PARTIAL_BLOCK_SIZE = 128 * 1024
+
+    @staticmethod
+    def calc_hash(path: Path, partial_hash: bool) -> bytes:
+        h = blake3.blake3()
+        file_size = path.stat().st_size
+
+        # ファイルサイズをまずハッシュに含める
+        h.update(str(file_size).encode("utf-8"))
+
+        with path.open("rb") as img:
+            if partial_hash and file_size > Hasher.PARTIAL_BLOCK_SIZE * 3:
+                # 先頭
+                img.seek(0)
+                h.update(img.read(Hasher.PARTIAL_BLOCK_SIZE))
+
+                # 中間
+                mid = file_size // 2
+                img.seek(max(0, mid - Hasher.PARTIAL_BLOCK_SIZE // 2))
+                h.update(img.read(Hasher.PARTIAL_BLOCK_SIZE))
+
+                # 末尾
+                img.seek(max(0, file_size - Hasher.PARTIAL_BLOCK_SIZE))
+                h.update(img.read(Hasher.PARTIAL_BLOCK_SIZE))
+            else:
+                # 全体ハッシュ
+                for chunk in iter(lambda: img.read(8192), b""):
+                    h.update(chunk)
+
+        return h.digest()
+
+
 @dataclass
 class ImageTask:
     path: Path
@@ -43,8 +77,17 @@ class LandmarkData:
 
 
 class PoseDB(Db):
-    def __init__(self, dbpath: str, clear_table: bool, row_name: bool = False):
+    _partial_hash: bool
+
+    def __init__(
+        self,
+        dbpath: str,
+        clear_table: bool,
+        use_partial_hash: bool,
+        row_name: bool = False,
+    ):
         super().__init__(dbpath, clear_table, row_name)
+        self._partial_hash = use_partial_hash
 
     @property
     def init_query(self) -> str:
@@ -55,8 +98,8 @@ class PoseDB(Db):
         return Table_Def
 
     def post_table_initialized(self) -> None:
-        # ランドマーク名のリストを作成し、データベースに挿入する（COCO準拠）
         with closing(self.cursor()) as cur:
+            # ランドマーク名のリストを作成し、データベースに挿入する（COCO準拠）
             index = 0
             for n in CocoLandmark:
                 cur.execute(
@@ -68,13 +111,8 @@ class PoseDB(Db):
                 )
                 index += 1
 
-    @staticmethod
-    def _calc_hash(path: Path) -> bytes:
-        h = blake3.blake3()
-        with path.open("rb") as img:
-            for chunk in iter(lambda: img.read(8192), b""):
-                h.update(chunk)
-        return h.digest()
+            # Meta情報
+            cur.execute("INSERT INTO Meta VALUES (?)", (self._partial_hash,))
 
     def register_imagefile(self, path: Path) -> tuple[bool, int]:
         L.debug(f"register_imagefile: {path}")
@@ -94,7 +132,7 @@ class PoseDB(Db):
                     return False, ent[2]  # 登録済みフラグとファイルIDを返す
 
             # ハッシュ値計算 (BLAKE3)
-            checksum: bytes = self._calc_hash(path)
+            checksum: bytes = Hasher.calc_hash(path, self._partial_hash)
 
             # あるいは、ファイルが移動した場合を考える
             cur.execute("SELECT id FROM File WHERE hash=?", (checksum,))
@@ -257,6 +295,7 @@ def process(
     database_path: Path,
     init_db: bool,
     max_workers: int,
+    use_partial_hash: bool,
 ) -> bool:
     # モデルファイルの存在チェック
     if not model_path.exists():
@@ -284,7 +323,7 @@ def process(
 
     # PoseDB オブジェクトを初期化し、データベースファイルを開く
     # init_db が True の場合、初期化される
-    with PoseDB(database_path, init_db) as db:
+    with PoseDB(database_path, init_db, use_partial_hash) as db:
         # 処理対象のディレクトリ
         t_dir: Path = target_dir
 
@@ -340,6 +379,14 @@ def process(
 
 
 def add_optional_arguments_to_parser(parser: argparse.ArgumentParser) -> None:
+    # 部分ハッシュ使用
+    with suppress(argparse.ArgumentError):
+        parser.add_argument(
+            "--use_partial_hash",
+            type=str_to_bool,
+            default=False,
+            help="Use partial hash instead of full hash",
+        )
     # SQLite3データベースファイル
     with suppress(argparse.ArgumentError):
         parser.add_argument(
@@ -398,4 +445,5 @@ if __name__ == "__main__":
         args.database_path,
         args.init_db,
         args.max_workers,
+        args.use_partial_hash,
     )

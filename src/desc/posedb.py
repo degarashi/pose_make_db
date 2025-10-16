@@ -16,7 +16,11 @@ from common.types import TableDef
 # テーブル初期化クエリ文
 def init_table_query() -> str:
     return """
-         CREATE TABLE File (
+        CREATE TABLE Meta (
+            partialHash INTEGER NOT NULL,
+            CHECK(partialHash IN (0, 1))
+        );
+        CREATE TABLE File (
             id          INTEGER PRIMARY KEY,
             path        TEXT NOT NULL UNIQUE,
             size        INTEGER NOT NULL,
@@ -73,6 +77,9 @@ def init_table_query() -> str:
 
 
 Table_Def: TableDef = {
+    "Meta": {
+        "partialHash": int,
+    },
     "File": {
         "id": int,
         "path": str,

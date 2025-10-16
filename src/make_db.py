@@ -61,6 +61,7 @@ def build_modules() -> List[ModuleTask]:
                 a.database_path,
                 a.init_db,
                 a.max_workers,
+                a.use_partial_hash,
             ),
             check_result=True,
         ),
