@@ -5,9 +5,9 @@ import re
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from contextlib import closing, suppress
 from dataclasses import dataclass
-from hashlib import sha512
 from pathlib import Path
 
+import blake3
 from tqdm import tqdm
 
 from common import default_path, log
@@ -85,12 +85,12 @@ class PoseDB(Db):
                     L.debug("already registered file(size and time)")
                     return False, ent[2]  # 登録済みフラグとファイルIDを返す
 
-            # ハッシュ値計算
-            hash = sha512()
+            # ハッシュ値計算 (BLAKE3)
+            h = blake3.blake3()
             with path.open("rb") as img:
-                for chunk in iter(lambda: img.read(2048 * hash.block_size), b""):
-                    hash.update(chunk)
-            checksum: bytes = hash.digest()  # ファイルのハッシュ値を計算
+                for chunk in iter(lambda: img.read(8192), b""):
+                    h.update(chunk)
+            checksum: bytes = h.digest()
 
             # あるいは、ファイルが移動した場合を考える
             cur.execute("SELECT id FROM File WHERE hash=?", (checksum,))
