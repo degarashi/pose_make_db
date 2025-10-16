@@ -6,6 +6,7 @@ authors = [
     { name = "Degarashi", email = "degarasu@gmail.com" }
 ]
 dependencies = [
+    "blake3>=1.0.8",
     "mediapipe>=0.10.21",
     "sqlite-vec>=0.1.6",
     "tqdm>=4.67.1",
