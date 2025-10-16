@@ -342,8 +342,8 @@ def process(
             initializer=_init_worker,
             initargs=(str(model_path),),
         ) as executor:
-            L.info("タスクの準備中...")
-            futures: dict[any, ImageTask] = {}
+            L.info("タスクの集計中...")
+            pend_task: list[ImageTask] = []
             for path in tqdm(image_paths, desc="Registering files"):
                 path = path.absolute()
                 # 画像ファイルが既に登録されてるか確認
@@ -351,10 +351,14 @@ def process(
                 L.debug(f"fileId={image_id}")
                 # 新規登録された場合のみ推定を実行
                 if b_id_created:
-                    futures[executor.submit(_estimate_proc, path.as_posix())] = (
-                        ImageTask(path=path, image_id=image_id)
-                    )
-            L.info(f"{len(futures)} タスク")
+                    pend_task.append(ImageTask(path=path, image_id=image_id))
+            L.info(f"{len(pend_task)} タスク")
+
+            L.info("タスク生成中...")
+            futures: dict[any, ImageTask] = {}
+            for pt in pend_task:
+                futures[executor.submit(_estimate_proc, path.as_posix())] = pt
+            L.info("完了")
 
             # tqdmで進捗を表示しつつFutureを処理
             for future in tqdm(
