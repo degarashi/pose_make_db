@@ -68,6 +68,14 @@ class PoseDB(Db):
                 )
                 index += 1
 
+    @staticmethod
+    def _calc_hash(path: Path) -> bytes:
+        h = blake3.blake3()
+        with path.open("rb") as img:
+            for chunk in iter(lambda: img.read(8192), b""):
+                h.update(chunk)
+        return h.digest()
+
     def register_imagefile(self, path: Path) -> tuple[bool, int]:
         L.debug(f"register_imagefile: {path}")
         stat = path.stat()  # ファイルの更新時刻を取得
@@ -86,11 +94,7 @@ class PoseDB(Db):
                     return False, ent[2]  # 登録済みフラグとファイルIDを返す
 
             # ハッシュ値計算 (BLAKE3)
-            h = blake3.blake3()
-            with path.open("rb") as img:
-                for chunk in iter(lambda: img.read(8192), b""):
-                    h.update(chunk)
-            checksum: bytes = h.digest()
+            checksum: bytes = self._calc_hash(path)
 
             # あるいは、ファイルが移動した場合を考える
             cur.execute("SELECT id FROM File WHERE hash=?", (checksum,))
