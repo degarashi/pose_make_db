@@ -204,18 +204,10 @@ class PoseDB(Db):
             # bboxはCOCOの2Dランドマークから算出
             xs = [lm.x_2d for lm in lms]
             ys = [lm.y_2d for lm in lms]
-            min_x = min(xs)
-            max_x = max(xs)
-            min_y = min(ys)
-            max_y = max(ys)
+            min_x, max_x = min(xs), max(xs)
+            min_y, max_y = min(ys), max(ys)
 
-            bbox = Rect2D(
-                min_x,
-                min_y,
-                max_x,
-                max_y,
-            )
-            # 矩形にマージンを加えるが、頭部は余裕を持たせる
+            bbox = Rect2D(min_x, min_y, max_x, max_y)
             RECT_MARGIN = 0.1
             ADDITIONAL_MARGIN = 0.1
             # COCOのnoseはインデックス0
@@ -238,11 +230,21 @@ class PoseDB(Db):
             L.debug("Success")
 
 
-# 姿勢推定
-def _estimate_proc(path: str, model_path: str) -> list[list[Landmark]]:
-    L.debug("Estimating pose...")
-    with Estimate(model_path, 3) as e:
-        return e.estimate(path)
+# ====== 並列処理用の初期化 ======
+_estimator: Estimate | None = None
+
+
+def _init_worker(model_path: str):
+    global _estimator
+    _estimator = Estimate(model_path, 3)
+    _estimator.__enter__()  # コンテキストを開いたまま保持
+
+
+def _estimate_proc(path: str) -> list[list[Landmark]]:
+    global _estimator
+    if _estimator is None:
+        raise RuntimeError("Estimator not initialized in worker")
+    return _estimator.estimate(path)
 
 
 def process(
@@ -290,10 +292,11 @@ def process(
             if re.search(R"\.(jpg|jpeg)$", str(p), re.IGNORECASE)
         ]
 
-        # 見つかった画像ファイルのパスをデータベースにロード、保存
-        with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            # 各ファイルに対して_estimate_proc関数を呼び出すFutureオブジェクトを作成
-            # estimateオブジェクトは各プロセスで生成
+        with ProcessPoolExecutor(
+            max_workers=max_workers,
+            initializer=_init_worker,
+            initargs=(str(model_path),),
+        ) as executor:
             futures: dict[any, ImageTask] = {}
             for path in image_paths:
                 path = path.absolute()
@@ -302,11 +305,9 @@ def process(
                 L.debug(f"fileId={image_id}")
                 # 新規登録された場合のみ推定を実行
                 if b_id_created:
-                    futures[
-                        executor.submit(
-                            _estimate_proc, path.as_posix(), str(model_path)
-                        )
-                    ] = ImageTask(path=path, image_id=image_id)
+                    futures[executor.submit(_estimate_proc, path.as_posix())] = (
+                        ImageTask(path=path, image_id=image_id)
+                    )
 
             # tqdmで進捗を表示しつつFutureを処理
             for future in tqdm(
