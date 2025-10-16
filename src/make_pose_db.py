@@ -284,6 +284,7 @@ def process(
         # 処理対象のディレクトリ
         t_dir: Path = target_dir
 
+        L.info("ファイルを列挙中...")
         # 指定されたディレクトリ (target_dir) 内のすべてのファイルを再帰的に検索し、
         # ファイル名が .jpg または .jpeg で終わるもの（大文字小文字を区別しない）をリストアップ
         image_paths = [
@@ -291,14 +292,16 @@ def process(
             for p in t_dir.glob("**/*")
             if re.search(R"\.(jpg|jpeg)$", str(p), re.IGNORECASE)
         ]
+        L.info(f"{len(image_paths)} ファイル検出")
 
         with ProcessPoolExecutor(
             max_workers=max_workers,
             initializer=_init_worker,
             initargs=(str(model_path),),
         ) as executor:
+            L.info("タスクの準備中...")
             futures: dict[any, ImageTask] = {}
-            for path in image_paths:
+            for path in tqdm(image_paths, desc="Registering files"):
                 path = path.absolute()
                 # 画像ファイルが既に登録されてるか確認
                 (b_id_created, image_id) = db.register_imagefile(path)
@@ -308,6 +311,7 @@ def process(
                     futures[executor.submit(_estimate_proc, path.as_posix())] = (
                         ImageTask(path=path, image_id=image_id)
                     )
+            L.info(f"{len(futures)} タスク")
 
             # tqdmで進捗を表示しつつFutureを処理
             for future in tqdm(
