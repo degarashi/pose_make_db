@@ -357,7 +357,7 @@ def process(
             L.info("タスク生成中...")
             futures: dict[any, ImageTask] = {}
             for pt in pend_task:
-                futures[executor.submit(_estimate_proc, path.as_posix())] = pt
+                futures[executor.submit(_estimate_proc, pt.path.as_posix())] = pt
             L.info("完了")
 
             # tqdmで進捗を表示しつつFutureを処理
